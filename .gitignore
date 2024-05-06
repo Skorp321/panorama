@@ -1,0 +1,6 @@
+.env
+/data
+/models/*
+.vscode
+*.mp4
+!src/
