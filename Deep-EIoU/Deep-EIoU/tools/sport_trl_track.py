@@ -3,8 +3,8 @@ import os
 import sys
 
 import torch
-from stimer import Timer
-from team_classifire import TeamClassifier
+from .utils.stimer import Timer
+from .utils.team_classifire import TeamClassifier
 
 import cv2
 from tqdm.auto import tqdm

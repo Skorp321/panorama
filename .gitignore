@@ -1,4 +1,5 @@
 .env
+.sport_env
 /data
 /models/*
 .vscode
