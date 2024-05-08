@@ -3,8 +3,9 @@ import os
 import sys
 
 import torch
-from .utills.stimer import Timer
-from .utills.team_classifire import TeamClassifier
+from stimer import Timer
+from utils import TeamClassifier
+from utils import write_results, get_crops, image_track
 
 import cv2
 from tqdm.auto import tqdm
@@ -28,7 +29,7 @@ def make_parser():
     parser = argparse.ArgumentParser("DeepEIoU For Evaluation!")
 
     parser.add_argument(
-        "--path", default="../../data/Swiss_vs_Slovakia-panoramic_video.mp4", 
+        "--path", default="/home/skorp321/Projects/panorama/data/Swiss_vs_slovakia-Panorama.mp4", 
         help="path to images or video"
     )
     parser.add_argument(

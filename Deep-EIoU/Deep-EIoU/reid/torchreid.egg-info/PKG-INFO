@@ -6,6 +6,7 @@ Home-page: https://github.com/KaiyangZhou/deep-person-reid
 Author: Kaiyang Zhou
 License: MIT
 Keywords: Person Re-Identification,Deep Learning,Computer Vision
+Platform: UNKNOWN
 License-File: LICENSE
 
 Torchreid
@@ -330,3 +331,5 @@ If you use this code or the models in your research, please give credit to the f
       journal={TPAMI},
       year={2021}
     }
+
+
