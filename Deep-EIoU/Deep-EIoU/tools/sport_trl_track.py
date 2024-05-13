@@ -4,8 +4,8 @@ import sys
 
 import torch
 from stimer import Timer
-from utils import TeamClassifier
-from utils import write_results, get_crops, image_track
+from utils import TeamClassifier, HomographySetup, DatabaseWriter
+from utils import write_results, get_crops, image_track, apply_homography_to_point
 
 import cv2
 from tqdm.auto import tqdm
@@ -29,8 +29,20 @@ def make_parser():
     parser = argparse.ArgumentParser("DeepEIoU For Evaluation!")
 
     parser.add_argument(
-        "--path", default="/home/skorp321/Projects/panorama/data/Swiss_vs_slovakia-Panorama.mp4", 
+        "--path", default="/home/skorp321/Projects/panorama/data/Swiss_vs_Slovakia-panoramic_video.mp4", 
         help="path to images or video"
+    )
+    parser.add_argument(
+        "--output_db", default="/home/skorp321/Projects/panorama/data/soccer_analitics.db", 
+        help="path to bd"
+    )
+    parser.add_argument(
+        "--path_to_field", default="/home/skorp321/Projects/panorama/data/soccer_field.png", 
+        help="path to soccer field image"
+    )
+    parser.add_argument(
+        "--h_matrix_path", default="/home/skorp321/Projects/panorama/data/h_matrix_path.npy", 
+        help="path to soccer field image"
     )
     parser.add_argument(
         "--path_to_det", default="../../models/yolov8m_goalkeeper_1280.pt", 
@@ -41,7 +53,7 @@ def make_parser():
         help="path to reid model"
     )
     parser.add_argument(
-        "--save_path", default="/home/skorp321/Projects/panorama2/data/output", type=str
+        "--save_path", default="/home/skorp321/Projects/panorama/data/output", type=str
         )
     parser.add_argument(
         "--trt",
@@ -51,27 +63,11 @@ def make_parser():
         help="Using TensorRT model for testing.",
     )
     parser.add_argument(
-        "--benchmark", dest="benchmark", type=str, default='MOT17', 
-        help="benchmark to evaluate: MOT17 | MOT20"
-        )
-    parser.add_argument(
-        "--eval", dest="split_to_eval", type=str, default='test', 
-        help="split to evaluate: train | val | test"
-        )
-    parser.add_argument(
-        "-f", "--exp_file", default=None, type=str, 
-        help="pls input your expriment description file")
-    parser.add_argument("-c", "--ckpt", default=None, type=str, 
-                        help="ckpt for eval")
-    parser.add_argument("-expn", "--experiment-name", type=str, 
-                        default=None)
-    parser.add_argument(
-        "--default-parameters", dest="default_parameters", default=False, 
-        action="store_true", 
-        help="use the default parameters as in the paper")
-    parser.add_argument(
         "--save-frames", dest="save_frames", default=False, action="store_true", 
         help="save sequences with tracks.")
+    # Homography
+
+    
 
     # Detector
     parser.add_argument("--device", default="0", type=str, 
@@ -103,12 +99,6 @@ def make_parser():
         help="threshold for filtering out boxes of which aspect ratio are above the given value.")
     parser.add_argument('--min_box_area', type=float, default=10, help='filter out tiny boxes')
     parser.add_argument("--nms_thres", type=float, default=0.7, help='nms threshold')
-
-    # CMC
-    parser.add_argument(
-        "--cmc-method", default="file", type=str, 
-        help="cmc method: files (Vidstab GMC) | sparseOptFlow | orb | ecc | none")
-
     # ReID
     parser.add_argument("--with-reid", dest="with_reid", default=True, action="store_true", 
                         help="use Re-ID flag.")
@@ -144,13 +134,22 @@ def main():
         model(x)
         model = model_trt
     else:'''
+    #Detector
     model = YOLO(args.path_to_det)
     print(model.names)
     
+    #ReID
     model_reid = TeamClassifier(weights_path=args.path_to_reid, model_name='osnet_x1_0')
 
-        # Tracker
+    # Tracker
     tracker = Deep_EIoU(args, frame_rate=30)
+    # Detector key points field
+    #model_kpoints = YOLO('yolo8m.pt')
+    
+    homographer = HomographySetup(args)
+    H = homographer.compute_homography_matrix()
+    
+    bd = DatabaseWriter(args)
     
     cap = ffmpegcv.VideoCaptureNV(args.path)
     fps = cap.fps
@@ -163,12 +162,19 @@ def main():
     text_scale = 2
     size = cap.size
     count = 1
+    
     for frame in tqdm(cap):
+        
         timer.tic()
+        
         img_copy = frame.copy()
+        img_layout_copy = homographer.layout_img.copy()
+        
         if args.fp16:
-            img_copy = img_copy.half()  # to FP16
+            img_copy = img_copy.half()  # to FP16       
             
+        res_data = []
+
         if count % 1 == 0:
             dets = []
             imgs_list = []
@@ -179,6 +185,7 @@ def main():
 
             imgs, offsets = get_crops(img_copy)
             outputs = model(imgs, imgsz=1280, show_conf=False, show_boxes=False, device=0, stream=False)
+            
             # Process results list
             for offset, result in zip(offsets, outputs):
                 boxes = result.boxes  # Boxes object for bounding box outputs
@@ -186,17 +193,14 @@ def main():
                 for box in boxes.data:
                     x1, y1 = int(offset + box[0]), int(box[1])
                     x2, y2 = int(offset + box[2]), int(box[3])
-                    w = x2 - x1
-                    h = y2 - y1
                     cls = int(box[5])
+                    conf = box.conf
                     collor = collors[cls]
                     cls_list.append(cls)
                     imgs_list.append(img_copy[y1:y2, x1:x2])
-                    
-                    #embeding = embeding.to('cpu').squeeze()
+
                     dets.append([cls, x1, y1, x2, y2, 1])
-                    
-                    #embs.append(embeding)
+
             embed['cls'] = cls_list      
             embeding = model_reid.extract_features(imgs_list)
             embed['embs'] = embeding
@@ -206,10 +210,12 @@ def main():
             embeddings['team'] = model_reid.classify(embeddings['embs'].to_list(), count)
             arr = np.array(dets, dtype=np.float64)
             team1, team2 = 0, 0
-            for i, (cls, emb, team) in embeddings.iterrows():                
+            for i, (cls, emb, team) in embeddings.iterrows():        
+
                 box = arr[i, 1:-1]
                 x1,y1,x2,y2 = box
-                #print(f'Cls: {cls}')
+                xm = int(x1+((x2 - x1) / 2.))
+
                 if cls != 2:
                     if team == 0 :
                         collor = collors[0]
@@ -217,8 +223,14 @@ def main():
                     if team == 1:
                         collor = collors[1]                  
                         team2 += 1
+                        
                     cv2.rectangle(img_copy, (int(x1), int(y1)), (int(x2), int(y2)), collor, 1)
+
+                    h_point = apply_homography_to_point([xm, y2], H)
+                    cv2.circle(img_layout_copy,h_point, 6,collor, -1) 
                 else:
+                    h_point = apply_homography_to_point([xm, y2], H)
+                    cv2.circle(img_layout_copy, h_point, 6,collors[2], -1) 
                     cv2.rectangle(img_copy, (int(x1), int(y1)), (int(x2), int(y2)), collors[2], 1)
                     print("Draw ref")
             print(f'Team 1: {team1}, team 2: {team2}')
@@ -232,23 +244,27 @@ def main():
                 
             cv2.putText(img_copy, 'frame: %d fps: %.2f num: %d' % (count, 1. / timer.average_time, detections.shape[0]),
                 (0, int(15 * text_scale)), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), thickness=2)
-            cv2.imshow('Video', img_copy)
+            
+            _, _, concatenated_img = homographer.prepare_images_for_display(img_copy, img_layout_copy)
+            
+            cv2.imshow('Video', concatenated_img)
 
             # Добавляем задержку для показа видео в реальном времени
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
             count += 1
-            vid_writer.write(img_copy)
+            vid_writer.write(concatenated_img)
         else:
             timer.toc()
             cv2.putText(img_copy, 'frame: %d fps: %.2f num: %d' % (count, 1. / timer.average_time, detections.shape[0]),
                         (0, int(15 * text_scale)), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), thickness=2)
-            cv2.imshow('Video', img_copy)
+            _, _, concatenated_img = homographer.prepare_images_for_display(img_copy)
+            cv2.imshow('Video', concatenated_img)
             # Добавляем задержку для показа видео в реальном времени
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
             count += 1
-            vid_writer.write(img_copy)
+            vid_writer.write(concatenated_img)
             
     cap.release()        
     vid_writer.release()
