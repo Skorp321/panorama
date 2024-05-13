@@ -4,7 +4,7 @@ import sys
 
 import torch
 from stimer import Timer
-from utils import TeamClassifier, HomographySetup
+from utils import TeamClassifier, HomographySetup, DatabaseWriter
 from utils import write_results, get_crops, image_track, apply_homography_to_point
 
 import cv2
@@ -33,6 +33,10 @@ def make_parser():
         help="path to images or video"
     )
     parser.add_argument(
+        "--output_db", default="/home/skorp321/Projects/panorama/data/soccer_analitics.db", 
+        help="path to bd"
+    )
+    parser.add_argument(
         "--path_to_field", default="/home/skorp321/Projects/panorama/data/soccer_field.png", 
         help="path to soccer field image"
     )
@@ -49,7 +53,7 @@ def make_parser():
         help="path to reid model"
     )
     parser.add_argument(
-        "--save_path", default="/home/skorp321/Projects/panorama2/data/output", type=str
+        "--save_path", default="/home/skorp321/Projects/panorama/data/output", type=str
         )
     parser.add_argument(
         "--trt",
@@ -145,6 +149,8 @@ def main():
     homographer = HomographySetup(args)
     H = homographer.compute_homography_matrix()
     
+    bd = DatabaseWriter(args)
+    
     cap = ffmpegcv.VideoCaptureNV(args.path)
     fps = cap.fps
     
@@ -156,12 +162,18 @@ def main():
     text_scale = 2
     size = cap.size
     count = 1
+    
     for frame in tqdm(cap):
+        
         timer.tic()
+        
         img_copy = frame.copy()
         img_layout_copy = homographer.layout_img.copy()
+        
         if args.fp16:
-            img_copy = img_copy.half()  # to FP16            
+            img_copy = img_copy.half()  # to FP16       
+            
+        res_data = []
 
         if count % 1 == 0:
             dets = []
@@ -173,6 +185,7 @@ def main():
 
             imgs, offsets = get_crops(img_copy)
             outputs = model(imgs, imgsz=1280, show_conf=False, show_boxes=False, device=0, stream=False)
+            
             # Process results list
             for offset, result in zip(offsets, outputs):
                 boxes = result.boxes  # Boxes object for bounding box outputs
@@ -180,18 +193,14 @@ def main():
                 for box in boxes.data:
                     x1, y1 = int(offset + box[0]), int(box[1])
                     x2, y2 = int(offset + box[2]), int(box[3])
-                    
-                    w = x2 - x1
-                    h = y2 - y1
                     cls = int(box[5])
+                    conf = box.conf
                     collor = collors[cls]
                     cls_list.append(cls)
                     imgs_list.append(img_copy[y1:y2, x1:x2])
-                    
-                    #embeding = embeding.to('cpu').squeeze()
+
                     dets.append([cls, x1, y1, x2, y2, 1])
-                    
-                    #embs.append(embeding)
+
             embed['cls'] = cls_list      
             embeding = model_reid.extract_features(imgs_list)
             embed['embs'] = embeding
@@ -201,11 +210,12 @@ def main():
             embeddings['team'] = model_reid.classify(embeddings['embs'].to_list(), count)
             arr = np.array(dets, dtype=np.float64)
             team1, team2 = 0, 0
-            for i, (cls, emb, team) in embeddings.iterrows():                
+            for i, (cls, emb, team) in embeddings.iterrows():        
+
                 box = arr[i, 1:-1]
                 x1,y1,x2,y2 = box
-                xm = int((x2 - x1) / 2.)
-                #print(f'Cls: {cls}')
+                xm = int(x1+((x2 - x1) / 2.))
+
                 if cls != 2:
                     if team == 0 :
                         collor = collors[0]
@@ -213,13 +223,14 @@ def main():
                     if team == 1:
                         collor = collors[1]                  
                         team2 += 1
+                        
                     cv2.rectangle(img_copy, (int(x1), int(y1)), (int(x2), int(y2)), collor, 1)
-                    #xm = int((x2 - x1) / 2.)
-                    h_point = apply_homography_to_point([x2, y2], H)
-                    cv2.circle(img_layout_copy,h_point, 10,collor, -1) 
+
+                    h_point = apply_homography_to_point([xm, y2], H)
+                    cv2.circle(img_layout_copy,h_point, 6,collor, -1) 
                 else:
-                    h_point = apply_homography_to_point([x2, y2], H)
-                    cv2.circle(img_layout_copy, h_point, 10,collors[2], -1) 
+                    h_point = apply_homography_to_point([xm, y2], H)
+                    cv2.circle(img_layout_copy, h_point, 6,collors[2], -1) 
                     cv2.rectangle(img_copy, (int(x1), int(y1)), (int(x2), int(y2)), collors[2], 1)
                     print("Draw ref")
             print(f'Team 1: {team1}, team 2: {team2}')
@@ -234,7 +245,7 @@ def main():
             cv2.putText(img_copy, 'frame: %d fps: %.2f num: %d' % (count, 1. / timer.average_time, detections.shape[0]),
                 (0, int(15 * text_scale)), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), thickness=2)
             
-            padded_layout_img, padded_first_frame, concatenated_img = homographer.prepare_images_for_display(img_copy, img_layout_copy)
+            _, _, concatenated_img = homographer.prepare_images_for_display(img_copy, img_layout_copy)
             
             cv2.imshow('Video', concatenated_img)
 
@@ -247,7 +258,7 @@ def main():
             timer.toc()
             cv2.putText(img_copy, 'frame: %d fps: %.2f num: %d' % (count, 1. / timer.average_time, detections.shape[0]),
                         (0, int(15 * text_scale)), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), thickness=2)
-            padded_layout_img, padded_first_frame, concatenated_img = homographer.prepare_images_for_display(img_copy)
+            _, _, concatenated_img = homographer.prepare_images_for_display(img_copy)
             cv2.imshow('Video', concatenated_img)
             # Добавляем задержку для показа видео в реальном времени
             if cv2.waitKey(25) & 0xFF == ord('q'):
