@@ -1,6 +1,7 @@
 import os
 
 from loguru import logger
+import numpy as np
 from stimer import Timer
 
 trackerTimer = Timer()
@@ -95,3 +96,21 @@ def image_track(tracker, detections, embeddings, sct_output_path, args, frame_id
         f.writelines(results)
     logger.info(f"save SCT results to {sct_output_path}")
     return results
+
+
+def apply_homography_to_point(point, H):
+    if point is not None:
+        point = np.array(point)
+        
+        # Convert point to homogeneous coordinates
+        point_homogeneous = np.append(point, 1)
+        
+        # Apply the homography matrix
+        #point_transformed_homogeneous = np.dot(H, point_homogeneous)
+        point_transformed_homogeneous = np.matmul(H, np.transpose(point_homogeneous))  
+        # Convert back to Cartesian coordinates
+        point_transformed = point_transformed_homogeneous[:2] / point_transformed_homogeneous[2]
+        point_transformed = [int(np.abs(value)) for value in point_transformed]
+        return point_transformed
+    else:
+        return point
