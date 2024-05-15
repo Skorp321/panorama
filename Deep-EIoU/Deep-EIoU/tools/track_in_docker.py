@@ -31,46 +31,46 @@ def make_parser():
 
     parser.add_argument(
         "--path",
-        default="/home/skorp321/Projects/panorama/data/Swiss_vs_Slovakia-panoramic_video.mp4",
+        default="/container_dir/data/Swiss_vs_Slovakia-panoramic_video.mp4",
         help="path to images or video",
     )
     parser.add_argument(
         "--output_db",
-        default="/home/skorp321/Projects/panorama/data/soccer_analitics.db",
+        default="/container_dir/data/soccer_analitics.db",
         help="path to bd",
     )
     parser.add_argument(
         "--path_to_field",
-        default="/home/skorp321/Projects/panorama/data/soccer_field.png",
+        default="/container_dir/data/soccer_field.png",
         help="path to soccer field image",
     )
     parser.add_argument(
         "--h_matrix_path",
-        default="/home/skorp321/Projects/panorama/data/h_matrix_path.npy",
+        default="/container_dir/data/h_matrix_path.npy",
         help="path to soccer field image",
     )
     parser.add_argument(
         "--path_to_det",
-        default="/home/skorp321/Projects/panorama/models/yolov8m_all_data.pt",
+        default="//container_dir/models/yolov8m_goalkeeper_1280.engine",
         help="path to detector model",
     )
     parser.add_argument(
         "--ball_det",
-        default="/home/skorp321/Projects/panorama/models/ball_SN5+52games.pt",
+        default="/container_dir/models/ball_SN5+52games.pt",
         help="path to detector model",
     )
     parser.add_argument(
         "--path_to_reid",
-        default="/home/skorp321/Projects/panorama/models/osnet_ain_x1_0_triplet_custom.pt",
+        default="/container_dir/models/osnet_ain_x1_0_triplet_custom.pt",
         help="path to reid model",
     )
     parser.add_argument(
-        "--save_path", default="/home/skorp321/Projects/panorama/data/output", type=str
+        "--save_path", default="../../data/output", type=str
     )
     parser.add_argument(
         "--trt",
         dest="trt",
-        default=False,
+        default=True,
         action="store_true",
         help="Using TensorRT model for testing.",
     )
@@ -403,11 +403,11 @@ def main():
                 img_copy, img_layout_copy
             )
 
-            cv2.imshow('Video', concatenated_img)
+            #cv2.imshow('Video', concatenated_img)
 
             # Добавляем задержку для показа видео в реальном времени
-            if cv2.waitKey(25) & 0xFF == ord("q"):
-                break
+            '''if cv2.waitKey(25) & 0xFF == ord("q"):
+                break'''
             count += 1
             vid_writer.write(concatenated_img)
             bd.update_db(frame_data)
@@ -425,10 +425,10 @@ def main():
             )
             _, _, concatenated_img = homographer.prepare_images_for_display(img_copy)
             
-            cv2.imshow("Video", concatenated_img)
+            #cv2.imshow("Video", concatenated_img)
             # Добавляем задержку для показа видео в реальном времени
-            if cv2.waitKey(25) & 0xFF == ord("q"):
-                break
+            '''if cv2.waitKey(25) & 0xFF == ord("q"):
+                break'''
             count += 1
             vid_writer.write(concatenated_img)
         

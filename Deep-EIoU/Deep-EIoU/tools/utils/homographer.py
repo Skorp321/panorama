@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+import ffmpegcv
 
 class HomographySetup:
     def __init__(self, config):
@@ -10,8 +11,10 @@ class HomographySetup:
         self.points_frame = []
 
     def load_and_prepare_images(self):
+        print(self.config.path_to_field)
         layout_img = cv2.imread(self.config.path_to_field)
-        cap = cv2.VideoCapture(self.config.path)
+        print(type(layout_img))
+        cap = ffmpegcv.VideoCaptureNV(self.config.path)
         ret, frame = cap.read()
         cap.release()
 
