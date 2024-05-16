@@ -51,12 +51,12 @@ def make_parser():
     )
     parser.add_argument(
         "--path_to_det",
-        default="/home/skorp321/Projects/panorama/models/yolov8m_all_data.pt",
+        default="/container_dir/models/yolov8m_goalkeeper_1280.engine",
         help="path to detector model",
     )
     parser.add_argument(
         "--ball_det",
-        default="/home/skorp321/Projects/panorama/models/ball_SN5+52games.pt",
+        default="/container_dir/models/ball_SN5+52games.pt",
         help="path to detector model",
     )
     parser.add_argument(
@@ -96,7 +96,7 @@ def make_parser():
     parser.add_argument(
         "--fp16",
         dest="fp16",
-        default=False,
+        default=True,
         action="store_true",
         help="Adopting mix precision evaluating.",
     )
@@ -187,20 +187,10 @@ def main():
     collors = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (125, 125, 0)]
     args = make_parser().parse_args()
 
-    if args.trt:
-        from torch2trt import TRTModule
-
-        model_trt = TRTModule()
-        model_trt.load_state_dict(args.path_to_det)
-
-        x = torch.ones((1, 3, 672, 1280), device=0)
-        model_trt(x)
-        model = model_trt
-    else:
-        # Detector
-        model = YOLO(args.path_to_det)
-        print(model.names)
-        ball_model = YOLO(args.ball_det)
+    # Detector
+    model = YOLO(args.path_to_det)
+    print(model.names)
+    ball_model = YOLO(args.ball_det)
 
     # ReID
     model_reid = TeamClassifier(weights_path=args.path_to_reid, model_name="osnet_x1_0")

@@ -2,7 +2,8 @@
 .sport_env
 /data
 /models/*
-.vscode
+runs
 *.mp4
+*.jpg
 !src/
 homography_kornia

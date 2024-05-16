@@ -3,6 +3,8 @@ import os
 import sys
 
 import torch
+import torch_tensorrt
+
 from stimer import Timer
 from utils import TeamClassifier, HomographySetup, DatabaseWriter
 from utils import write_results, get_crops, image_track, apply_homography_to_point
@@ -51,7 +53,7 @@ def make_parser():
     )
     parser.add_argument(
         "--path_to_det",
-        default="//container_dir/models/yolov8m_goalkeeper_1280.engine",
+        default="/container_dir/models/yolov8m_goalkeeper_1280.engine",
         help="path to detector model",
     )
     parser.add_argument(
@@ -187,20 +189,10 @@ def main():
     collors = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (125, 125, 0)]
     args = make_parser().parse_args()
 
-    if args.trt:
-        from torch2trt import TRTModule
-
-        model_trt = TRTModule()
-        model_trt.load_state_dict(args.path_to_det)
-
-        x = torch.ones((1, 3, 672, 1280), device=0)
-        model_trt(x)
-        model = model_trt
-    else:
-        # Detector
-        model = YOLO(args.path_to_det)
-        print(model.names)
-        ball_model = YOLO(args.ball_det)
+    # Detector
+    model = YOLO(args.path_to_det)
+    print(model.names)
+    ball_model = YOLO(args.ball_det)
 
     # ReID
     model_reid = TeamClassifier(weights_path=args.path_to_reid, model_name="osnet_x1_0")
@@ -235,7 +227,7 @@ def main():
         img_layout_copy = homographer.layout_img.copy()
 
         if args.fp16:
-            img_copy = img_copy.half()  # to FP16
+            img_copy = img_copy.astype(np.float16)  # to FP16
 
         if count % 1 == 0:
             dets = []
@@ -246,14 +238,16 @@ def main():
             logger.info(f"Processing seq {count} in {size}")
 
             imgs, offsets = get_crops(img_copy)
-            outputs = model(
+            outputs = model.predict(
                 imgs,
                 imgsz=1280,
-                show_conf=False,
-                show_boxes=False,
+                half=True,
+                #show_conf=False,
+                #show_boxes=False,
                 device=0,
                 stream=False,
                 agnostic_nms = True,
+                stream_buffer=True,
                 max_det = 26
             )
             '''ball_output = ball_model(
