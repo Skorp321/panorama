@@ -11,9 +11,7 @@ class HomographySetup:
         self.points_frame = []
 
     def load_and_prepare_images(self):
-        print(self.config.path_to_field)
         layout_img = cv2.imread(self.config.path_to_field)
-        print(type(layout_img))
         cap = ffmpegcv.VideoCaptureNV(self.config.path)
         ret, frame = cap.read()
         cap.release()

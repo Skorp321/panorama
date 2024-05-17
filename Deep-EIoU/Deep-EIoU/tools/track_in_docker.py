@@ -67,12 +67,12 @@ def make_parser():
         help="path to reid model",
     )
     parser.add_argument(
-        "--save_path", default="../../data/output", type=str
+        "--save_path", default="/container_dir/data/output", type=str
     )
     parser.add_argument(
         "--trt",
         dest="trt",
-        default=True,
+        default=False,
         action="store_true",
         help="Using TensorRT model for testing.",
     )
@@ -182,6 +182,13 @@ def make_parser():
 
     return parser
 
+def resize_images(imgs_list, size=(224, 224)):
+    resized_imgs_list = []
+    for img in imgs_list:
+        resized_img = cv2.resize(img, size)
+        resized_imgs_list.append(resized_img)
+    return resized_imgs_list
+
 
 def main():
 
@@ -196,6 +203,12 @@ def main():
 
     # ReID
     model_reid = TeamClassifier(weights_path=args.path_to_reid, model_name="osnet_x1_0")
+
+    if args.trt:
+        path_trt = args.path_to_reid.replace('.pt', '.engine')
+        trt_ts_module = torch.jit.load(path_trt)
+
+        model_reid.extractor.model = trt_ts_module
 
     # Tracker
     tracker = Deep_EIoU(args, frame_rate=30)
@@ -225,9 +238,6 @@ def main():
 
         img_copy = frame.copy()
         img_layout_copy = homographer.layout_img.copy()
-
-        if args.fp16:
-            img_copy = img_copy.astype(np.float16)  # to FP16
 
         if count % 1 == 0:
             dets = []
@@ -291,8 +301,18 @@ def main():
             frame_data = pd.DataFrame(dets, columns=columns)
 
             embed["cls"] = cls_list
+            
+            if args.fp16:
+                imgs_list = resize_images(imgs_list, size=(256, 128))                
+                imgs_list = np.array(imgs_list, dtype=np.float16)
+                imgs_list = torch.tensor(imgs_list, dtype=torch.half)
+                imgs_list = torch.permute(imgs_list, (0, 3, 2, 1))
+                print(imgs_list.shape)
+                #imgs_list = imgs_list.astype(np.float16)  # to FP16
+            #print(imgs_list)
             embeding = model_reid.extract_features(imgs_list)
-            embed["embs"] = embeding
+
+            embed["embs"] = embeding[:len(imgs_list)]
             embeddings = pd.DataFrame(embed)
 
             embeddings["team"] = model_reid.classify(

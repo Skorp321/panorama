@@ -16,7 +16,7 @@ model_name = 'osnet_ain_x1_0'
 loss = 'triplet'
 use_gpu = torch.cuda.is_available()
 
-def benchmark(model, input_shape=(22, 3, 256, 128), dtype='fp32', nwarmup=50, nruns=100):
+def benchmark(model, input_shape=(26, 3, 256, 128), dtype='fp32', nwarmup=50, nruns=100):
     input_data = torch.randn(input_shape)
     input_data = input_data.to("cuda")
     if dtype=='fp16':
@@ -44,7 +44,7 @@ def benchmark(model, input_shape=(22, 3, 256, 128), dtype='fp32', nwarmup=50, nr
     print('Average batch time: %.2f ms'%(np.mean(timings)*1000))
 
 def main():
-
+    import torch
     '''model = torchreid.models.build_model(
         name=model_name,
         num_classes=946,
@@ -58,8 +58,9 @@ def main():
     model = model_f.model
     model = model.eval().cuda()  # torch module needs to be in eval (not training) mode
 
-    inputs = torch.randn((22, 3, 256, 128)).cuda()
-    batch_size = 22
+    #input = torch.ones((4, 3, 224, 224)).cuda()
+    inputs = torch.randn((26, 3, 256, 128)).cuda()
+    batch_size = 26
     
     print('Torch model:')
     benchmark(model)
@@ -69,7 +70,7 @@ def main():
     
     print('TorchScript model:')    
     benchmark(jit_model)
-    
+    '''
     trt_model_fp32 = torch_tensorrt.compile(jit_model, 
                                             ir='torchscript',
                                             inputs=[torch_tensorrt.Input((batch_size, 3, 256, 128), dtype=torch.float)],
@@ -77,18 +78,21 @@ def main():
                                             truncate_long_and_double=True)
     
     print('tensorrt model 32:')
-    benchmark(trt_model_fp32)
-    #import torch._dynamo
+    benchmark(trt_model_fp32)'''
+    import torch._dynamo
     torch._dynamo.config.suppress_errors = True
     trt_model_fp16 = torch_tensorrt.compile(jit_model,
-                                        inputs=[torch_tensorrt.Input((batch_size, 3, 256, 128), dtype=torch.half)],
-                                        enabled_precisions={torch.half},
-                                        truncate_long_and_double=True,
-                                        require_full_compilation=True)
+                                        inputs = torch_tensorrt.Input(min_shape=(1, 256, 128, 3),
+                                                                      opt_shape=(23, 256, 128, 3),
+                                                                      max_shape=(26, 256, 128, 3),
+                                                                      format=torch.channel_last,
+                                                                      dtype=torch.half))
+    
+
         
     print('tensorrt model 16:')
     benchmark(trt_model_fp16, dtype='fp16')     
-    torch.jit.save(trt_model_fp16, 'models/osnet_x1_03.engine')
+    torch.jit.save(trt_model_fp16, 'models/osnet_ain_x1_0_triplet_custom.engine')
     #trt_model_fp16._save_to_state_dict('models/osnet_x1_01.engine')
     '''with open('models/osnet_x1_02.engine', 'wb') as f:
         f.write(trt_model_fp16)'''
