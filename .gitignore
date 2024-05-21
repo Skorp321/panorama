@@ -4,6 +4,7 @@
 /models/*
 runs
 *.mp4
+*.pt
 *.jpg
 !src/
 homography_kornia

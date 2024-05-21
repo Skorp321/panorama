@@ -4,8 +4,8 @@ from tqdm.auto import tqdm
 from ultralytics import YOLO
 from tqdm.auto import tqdm
 
-img_path = '/container_dir/data/Swiss_vs_Slovakia-panoramic_video.mp4'
-model_path = '/container_dir/models/yolov8m_goalkeeper_1280.engine'
+img_path = 'data/Swiss_vs_Slovakia-panoramic_video.mp4'
+model_path = 'models/yolov8m_goalkeeper_1280.pt'
 
 def get_crops(img, crop_width=1280, offset=0):
     """
@@ -33,11 +33,32 @@ def get_crops(img, crop_width=1280, offset=0):
     return crops, coord_offsets
 
 model = YOLO(model_path)
-cap = ffmpegcv.VideoCaptureNV(img_path)
+cap = cv2.VideoCapture(img_path)
 
-for frame in tqdm(cap):
-    images, _ = get_crops(frame)
-    output = model.predict(images, save=True, imgsz=1280, half=True, stream_buffer=True)
-    #print(output[0])
+with tqdm(total=int(cap.get(cv2.CAP_PROP_FRAME_COUNT))) as pbar:
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        cv2.imshow('frame2', frame)
+        crops, coord_offsets = get_crops(frame)
+        
+        for crop, coord_offset in zip(crops, coord_offsets):
+            results = model(crop)
+            for result in results:
+                if len(result.boxes) != 0:
+                    for box in result.boxes:
+                        x1, y1, x2, y2 = box.xyxy[0]
+                        x1 = x1.detach().cpu().numpy()
+                        y1 = y1.detach().cpu().numpy()
+                        x2 = x2.detach().cpu().numpy()
+                        y2 = y2.detach().cpu().numpy()
+                        x1 += coord_offset
+                        x2 += coord_offset
+                        
+                        print(x1, y1, x2, y2)
+
+                        cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                        cv2.imshow('frame', frame)
 
 cap.release()
