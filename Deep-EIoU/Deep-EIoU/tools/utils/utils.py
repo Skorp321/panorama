@@ -2,7 +2,7 @@ import os
 
 from loguru import logger
 import numpy as np
-from stimer import Timer
+from .stimer import Timer
 
 trackerTimer = Timer()
 timer = Timer()
@@ -60,9 +60,6 @@ def image_track(tracker, detections, embeddings, sct_output_path, args, frame_id
     
     if det is not None:
 
-        '''embs = [e[0] for e in embs]
-        embs = np.array(embs)'''
-        
         trackerTimer.tic()
         online_targets = tracker.update(det, embs)
         trackerTimer.toc()
@@ -74,7 +71,7 @@ def image_track(tracker, detections, embeddings, sct_output_path, args, frame_id
             tlwh = t.last_tlwh
             tid = t.track_id
             vertical = tlwh[2] / tlwh[3] > args.aspect_ratio_thresh
-            vertical = False
+            #vertical = False
             if tlwh[2] * tlwh[3] > args.min_box_area and not vertical:
                 online_tlwhs.append(tlwh)
                 online_ids.append(tid)

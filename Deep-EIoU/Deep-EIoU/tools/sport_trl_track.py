@@ -3,7 +3,7 @@ import os
 import sys
 
 import torch
-from stimer import Timer
+from utils import Timer
 from utils import TeamClassifier, HomographySetup, DatabaseWriter
 from utils import write_results, get_crops, image_track, apply_homography_to_point
 
@@ -35,6 +35,11 @@ def make_parser():
         help="path to images or video",
     )
     parser.add_argument(
+        "--show",
+        default=False,
+        help="Show the processed images",
+    )
+    parser.add_argument(
         "--output_db",
         default="/home/skorp321/Projects/panorama/data/soccer_analitics.db",
         help="path to bd",
@@ -45,18 +50,28 @@ def make_parser():
         help="path to soccer field image",
     )
     parser.add_argument(
+        "--path_to_field_points",
+        default="/home/skorp321/Projects/panorama/data/soccer_field.png",
+        help="path to soccer field image",
+    )
+    parser.add_argument(
         "--h_matrix_path",
-        default="/home/skorp321/Projects/panorama/data/h_matrix_path.npy",
+        default="",#/home/skorp321/Projects/panorama/data/h_matrix_path.npy",
         help="path to soccer field image",
     )
     parser.add_argument(
         "--path_to_det",
-        default="/container_dir/models/yolov8m_goalkeeper_1280.engine",
+        default="/home/skorp321/Projects/panorama/models/yolov8m_goalkeeper_1280.pt",
+        help="path to detector model",
+    )
+    parser.add_argument(
+        "--path_to_keypoints_det",
+        default="/home/skorp321/Projects/panorama/runs/pose/train8/weights/best.pt",
         help="path to detector model",
     )
     parser.add_argument(
         "--ball_det",
-        default="/container_dir/models/ball_SN5+52games.pt",
+        default="/home/skorp321/Projects/panorama/models/ball_SN5+52games.pt",
         help="path to detector model",
     )
     parser.add_argument(
@@ -96,7 +111,7 @@ def make_parser():
     parser.add_argument(
         "--fp16",
         dest="fp16",
-        default=True,
+        default=False,
         action="store_true",
         help="Adopting mix precision evaluating.",
     )
@@ -154,7 +169,6 @@ def make_parser():
     parser.add_argument(
         "--fast-reid-config",
         dest="fast_reid_config",
-        default=r"fast_reid/configs/MOT17/sbs_S50.yml",
         type=str,
         help="reid config file path",
     )
@@ -196,13 +210,13 @@ def main():
     model_reid = TeamClassifier(weights_path=args.path_to_reid, model_name="osnet_x1_0")
 
     # Tracker
-    tracker = Deep_EIoU(args, frame_rate=30)
-    # Detector key points field
-    # model_kpoints = YOLO('yolo8m.pt')
+    tracker = Deep_EIoU(args, frame_rate=60)
 
+    # Homography
     homographer = HomographySetup(args)
     H = homographer.compute_homography_matrix()
 
+    #Database connector and writer
     bd = DatabaseWriter(args)
 
     cap = ffmpegcv.VideoCaptureNV(args.path)
@@ -230,9 +244,9 @@ def main():
         if count % 1 == 0:
             dets = []
             imgs_list = []
-            embed = {"cls": [], "embs": []}
             cls_list = []
-
+            embed = {"cls": [], "embs": []}
+            
             logger.info(f"Processing seq {count} in {size}")
 
             imgs, offsets = get_crops(img_copy)
@@ -287,8 +301,7 @@ def main():
             frame_data = pd.DataFrame(dets, columns=columns)
 
             embed["cls"] = cls_list
-            embeding = model_reid.extract_features(imgs_list)
-            embed["embs"] = embeding
+            embed["embs"] = model_reid.extract_features(imgs_list)
             embeddings = pd.DataFrame(embed)
 
             embeddings["team"] = model_reid.classify(
@@ -332,7 +345,6 @@ def main():
                     cv2.rectangle(
                         img_copy, (int(x1), int(y1)), (int(x2), int(y2)), collors[2], 1
                     )
-                    print("Draw ref")
 
             frame_data["xm"], frame_data["ym"] = h_point_x, h_point_y
             frame_data.sort_values(by=["x1", "y1"], inplace=True)
@@ -393,11 +405,12 @@ def main():
                 img_copy, img_layout_copy
             )
 
-            cv2.imshow('Video', concatenated_img)
+            if args.show:
+                cv2.imshow('Video', concatenated_img)
 
-            # Добавляем задержку для показа видео в реальном времени
-            if cv2.waitKey(25) & 0xFF == ord("q"):
-                break
+                # Добавляем задержку для показа видео в реальном времени
+                if cv2.waitKey(25) & 0xFF == ord("q"):
+                    break
             count += 1
             vid_writer.write(concatenated_img)
             bd.update_db(frame_data)
@@ -415,10 +428,11 @@ def main():
             )
             _, _, concatenated_img = homographer.prepare_images_for_display(img_copy)
             
-            cv2.imshow("Video", concatenated_img)
-            # Добавляем задержку для показа видео в реальном времени
-            if cv2.waitKey(25) & 0xFF == ord("q"):
-                break
+            if args.show:
+                cv2.imshow("Video", concatenated_img)
+                # Добавляем задержку для показа видео в реальном времени
+                if cv2.waitKey(25) & 0xFF == ord("q"):
+                    break
             count += 1
             vid_writer.write(concatenated_img)
         

@@ -37,6 +37,11 @@ def make_parser():
         help="path to images or video",
     )
     parser.add_argument(
+        "--show",
+        default=False,
+        help="Show the processed images",
+    )
+    parser.add_argument(
         "--output_db",
         default="/container_dir/data/soccer_analitics.db",
         help="path to bd",
@@ -417,11 +422,11 @@ def main():
                 img_copy, img_layout_copy
             )
 
-            #cv2.imshow('Video', concatenated_img)
-
-            # Добавляем задержку для показа видео в реальном времени
-            '''if cv2.waitKey(25) & 0xFF == ord("q"):
-                break'''
+            if args.show:
+                cv2.imshow("Video", concatenated_img)
+                # Добавляем задержку для показа видео в реальном времени
+                if cv2.waitKey(25) & 0xFF == ord("q"):
+                    break
             count += 1
             vid_writer.write(concatenated_img)
             bd.update_db(frame_data)
@@ -439,10 +444,11 @@ def main():
             )
             _, _, concatenated_img = homographer.prepare_images_for_display(img_copy)
             
-            #cv2.imshow("Video", concatenated_img)
-            # Добавляем задержку для показа видео в реальном времени
-            '''if cv2.waitKey(25) & 0xFF == ord("q"):
-                break'''
+            if args.show:
+                cv2.imshow("Video", concatenated_img)
+                # Добавляем задержку для показа видео в реальном времени
+                if cv2.waitKey(25) & 0xFF == ord("q"):
+                    break
             count += 1
             vid_writer.write(concatenated_img)
         
