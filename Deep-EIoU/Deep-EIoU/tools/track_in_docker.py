@@ -5,9 +5,8 @@ import sys
 import torch
 import torch_tensorrt
 
-from stimer import Timer
-from utils import TeamClassifier, HomographySetup, DatabaseWriter
-from utils import write_results, get_crops, image_track, apply_homography_to_point
+from utils import TeamClassifier, HomographySetup, DatabaseWriter, Timer
+from utils import write_results, get_crops, image_track, apply_homography_to_point, make_parser
 
 import cv2
 from tqdm.auto import tqdm
@@ -26,173 +25,6 @@ import pandas as pd
 # Global
 trackerTimer = Timer()
 timer = Timer()
-
-
-def make_parser():
-    parser = argparse.ArgumentParser("DeepEIoU For Evaluation!")
-
-    parser.add_argument(
-        "--path",
-        default="/container_dir/data/Swiss_vs_Slovakia-panoramic_video.mp4",
-        help="path to images or video",
-    )
-    parser.add_argument(
-        "--show",
-        default=False,
-        help="Show the processed images",
-    )
-    parser.add_argument(
-        "--output_db",
-        default="/container_dir/data/soccer_analitics.db",
-        help="path to bd",
-    )
-    parser.add_argument(
-        "--path_to_field",
-        default="/container_dir/data/soccer_field.png",
-        help="path to soccer field image",
-    )
-    parser.add_argument(
-        "--h_matrix_path",
-        default="/container_dir/data/h_matrix_path.npy",
-        help="path to soccer field image",
-    )
-    parser.add_argument(
-        "--path_to_det",
-        default="/container_dir/models/yolov8m_goalkeeper_1280.engine",
-        help="path to detector model",
-    )
-    parser.add_argument(
-        "--ball_det",
-        default="/container_dir/models/ball_SN5+52games.pt",
-        help="path to detector model",
-    )
-    parser.add_argument(
-        "--path_to_reid",
-        default="/container_dir/models/osnet_ain_x1_0_triplet_custom.pt",
-        help="path to reid model",
-    )
-    parser.add_argument(
-        "--save_path", default="/container_dir/data/output", type=str
-    )
-    parser.add_argument(
-        "--trt",
-        dest="trt",
-        default=False,
-        action="store_true",
-        help="Using TensorRT model for testing.",
-    )
-    parser.add_argument(
-        "--save-frames",
-        dest="save_frames",
-        default=False,
-        action="store_true",
-        help="save sequences with tracks.",
-    )
-    # Homography
-
-    # Detector
-    parser.add_argument(
-        "--device",
-        default="0",
-        type=str,
-        help="device to run our model, can either be cpu or gpu",
-    )
-    parser.add_argument("--conf", default=None, type=float, help="test conf")
-    parser.add_argument("--nms", default=None, type=float, help="test nms threshold")
-    parser.add_argument("--tsize", default=1280, type=int, help="test img size")
-    parser.add_argument(
-        "--fp16",
-        dest="fp16",
-        default=False,
-        action="store_true",
-        help="Adopting mix precision evaluating.",
-    )
-    parser.add_argument(
-        "--fuse",
-        dest="fuse",
-        default=False,
-        action="store_true",
-        help="Fuse conv and bn for testing.",
-    )
-
-    # tracking args
-    parser.add_argument(
-        "--track_high_thresh",
-        type=float,
-        default=0.6,
-        help="tracking confidence threshold",
-    )
-    parser.add_argument(
-        "--track_low_thresh",
-        default=0.1,
-        type=float,
-        help="lowest detection threshold valid for tracks",
-    )
-    parser.add_argument(
-        "--new_track_thresh", default=0.7, type=float, help="new track thresh"
-    )
-    parser.add_argument(
-        "--track_buffer", type=int, default=60, help="the frames for keep lost tracks"
-    )
-    parser.add_argument(
-        "--match_thresh",
-        type=float,
-        default=0.8,
-        help="matching threshold for tracking",
-    )
-    parser.add_argument(
-        "--aspect_ratio_thresh",
-        type=float,
-        default=1.6,
-        help="threshold for filtering out boxes of which aspect ratio are above the given value.",
-    )
-    parser.add_argument(
-        "--min_box_area", type=float, default=10, help="filter out tiny boxes"
-    )
-    parser.add_argument("--nms_thres", type=float, default=0.7, help="nms threshold")
-    # ReID
-    parser.add_argument(
-        "--with-reid",
-        dest="with_reid",
-        default=True,
-        action="store_true",
-        help="use Re-ID flag.",
-    )
-    parser.add_argument(
-        "--fast-reid-config",
-        dest="fast_reid_config",
-        default=r"fast_reid/configs/MOT17/sbs_S50.yml",
-        type=str,
-        help="reid config file path",
-    )
-    parser.add_argument(
-        "--fast-reid-weights",
-        dest="fast_reid_weights",
-        default=r"pretrained/mot17_sbs_S50.pth",
-        type=str,
-        help="reid config file path",
-    )
-    parser.add_argument(
-        "--proximity_thresh",
-        type=float,
-        default=0.5,
-        help="threshold for rejecting low overlap reid matches",
-    )
-    parser.add_argument(
-        "--appearance_thresh",
-        type=float,
-        default=0.25,
-        help="threshold for rejecting low appearance similarity reid matches",
-    )
-
-    return parser
-
-def resize_images(imgs_list, size=(224, 224)):
-    resized_imgs_list = []
-    for img in imgs_list:
-        resized_img = cv2.resize(img, size)
-        resized_imgs_list.append(resized_img)
-    return resized_imgs_list
 
 
 def main():
@@ -369,7 +201,7 @@ def main():
             detections = arr[:, 2:]
             
             results = image_track(
-                tracker, detections, embeddings["embs"], args.save_path, args, count
+                tracker, detections, embeddings["embs"], args, count
             )
             track_columns = [
                 "frame_id",

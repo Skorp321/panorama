@@ -2,10 +2,15 @@ import argparse
 import os
 import sys
 
-import torch
-from utils import Timer
-from utils import TeamClassifier, HomographySetup, DatabaseWriter
-from utils import write_results, get_crops, image_track, apply_homography_to_point
+from copy import deepcopy
+from utils import (
+    TeamClassifier, 
+    HomographySetup, 
+    DatabaseWriter, 
+    Timer, 
+    TrackMacher)
+from utils import write_results, get_crops, image_track, apply_homography_to_point, make_parser
+import supervision as sv
 
 import cv2
 from tqdm.auto import tqdm
@@ -23,184 +28,6 @@ import pandas as pd
 
 # Global
 trackerTimer = Timer()
-timer = Timer()
-
-
-def make_parser():
-    parser = argparse.ArgumentParser("DeepEIoU For Evaluation!")
-
-    parser.add_argument(
-        "--path",
-        default="/home/skorp321/Projects/panorama/data/Swiss_vs_Slovakia-panoramic_video.mp4",
-        help="path to images or video",
-    )
-    parser.add_argument(
-        "--show",
-        default=False,
-        help="Show the processed images",
-    )
-    parser.add_argument(
-        "--output_db",
-        default="/home/skorp321/Projects/panorama/data/soccer_analitics.db",
-        help="path to bd",
-    )
-    parser.add_argument(
-        "--path_to_field",
-        default="/home/skorp321/Projects/panorama/data/soccer_field.png",
-        help="path to soccer field image",
-    )
-    parser.add_argument(
-        "--path_to_field_points",
-        default="/home/skorp321/Projects/panorama/data/soccer_field.png",
-        help="path to soccer field image",
-    )
-    parser.add_argument(
-        "--h_matrix_path",
-        default="",#/home/skorp321/Projects/panorama/data/h_matrix_path.npy",
-        help="path to soccer field image",
-    )
-    parser.add_argument(
-        "--path_to_det",
-        default="/home/skorp321/Projects/panorama/models/yolov8m_goalkeeper_1280.pt",
-        help="path to detector model",
-    )
-    parser.add_argument(
-        "--path_to_keypoints_det",
-        default="/home/skorp321/Projects/panorama/runs/pose/train8/weights/best.pt",
-        help="path to detector model",
-    )
-    parser.add_argument(
-        "--ball_det",
-        default="/home/skorp321/Projects/panorama/models/ball_SN5+52games.pt",
-        help="path to detector model",
-    )
-    parser.add_argument(
-        "--path_to_reid",
-        default="/home/skorp321/Projects/panorama/models/osnet_ain_x1_0_triplet_custom.pt",
-        help="path to reid model",
-    )
-    parser.add_argument(
-        "--save_path", default="/home/skorp321/Projects/panorama/data/output", type=str
-    )
-    parser.add_argument(
-        "--trt",
-        dest="trt",
-        default=False,
-        action="store_true",
-        help="Using TensorRT model for testing.",
-    )
-    parser.add_argument(
-        "--save-frames",
-        dest="save_frames",
-        default=False,
-        action="store_true",
-        help="save sequences with tracks.",
-    )
-    parser.add_argument(
-        "--init_tresh",
-        default=3,
-        help="frames to initialize the algorithms.",
-    )
-    
-    
-    # Homography
-
-    # Detector
-    parser.add_argument(
-        "--device",
-        default="0",
-        type=str,
-        help="device to run our model, can either be cpu or gpu",
-    )
-    parser.add_argument("--conf", default=None, type=float, help="test conf")
-    parser.add_argument("--nms", default=None, type=float, help="test nms threshold")
-    parser.add_argument("--tsize", default=1280, type=int, help="test img size")
-    parser.add_argument(
-        "--fp16",
-        dest="fp16",
-        default=False,
-        action="store_true",
-        help="Adopting mix precision evaluating.",
-    )
-    parser.add_argument(
-        "--fuse",
-        dest="fuse",
-        default=False,
-        action="store_true",
-        help="Fuse conv and bn for testing.",
-    )
-
-    # tracking args
-    parser.add_argument(
-        "--track_high_thresh",
-        type=float,
-        default=0.6,
-        help="tracking confidence threshold",
-    )
-    parser.add_argument(
-        "--track_low_thresh",
-        default=0.1,
-        type=float,
-        help="lowest detection threshold valid for tracks",
-    )
-    parser.add_argument(
-        "--new_track_thresh", default=0.7, type=float, help="new track thresh"
-    )
-    parser.add_argument(
-        "--track_buffer", type=int, default=60, help="the frames for keep lost tracks"
-    )
-    parser.add_argument(
-        "--match_thresh",
-        type=float,
-        default=0.8,
-        help="matching threshold for tracking",
-    )
-    parser.add_argument(
-        "--aspect_ratio_thresh",
-        type=float,
-        default=1.6,
-        help="threshold for filtering out boxes of which aspect ratio are above the given value.",
-    )
-    parser.add_argument(
-        "--min_box_area", type=float, default=10, help="filter out tiny boxes"
-    )
-    parser.add_argument("--nms_thres", type=float, default=0.7, help="nms threshold")
-    # ReID
-    parser.add_argument(
-        "--with-reid",
-        dest="with_reid",
-        default=True,
-        action="store_true",
-        help="use Re-ID flag.",
-    )
-    parser.add_argument(
-        "--fast-reid-config",
-        dest="fast_reid_config",
-        type=str,
-        help="reid config file path",
-    )
-    parser.add_argument(
-        "--fast-reid-weights",
-        dest="fast_reid_weights",
-        default=r"pretrained/mot17_sbs_S50.pth",
-        type=str,
-        help="reid config file path",
-    )
-    parser.add_argument(
-        "--proximity_thresh",
-        type=float,
-        default=0.5,
-        help="threshold for rejecting low overlap reid matches",
-    )
-    parser.add_argument(
-        "--appearance_thresh",
-        type=float,
-        default=0.25,
-        help="threshold for rejecting low appearance similarity reid matches",
-    )
-
-    return parser
-
 
 def main():
 
@@ -225,21 +52,29 @@ def main():
 
     #Database connector and writer
     bd = DatabaseWriter(args)
-
-    cap = ffmpegcv.VideoCaptureNV(args.path)
-    fps = cap.fps
+    
+    macher = TrackMacher()
 
     save_path = os.path.join(args.save_path, args.path.split("/")[-1])
-
-    vid_writer = ffmpegcv.VideoWriterNV(save_path, "h264", fps)
+    
+    #cap = ffmpegcv.VideoCaptureNV(args.path)
+    cap = cv2.VideoCapture(args.path)
+    #fps = cap.fps
+    #vid_writer = ffmpegcv.VideoWriterNV(save_path, "h264", fps)
     logger.info(f"save path to video: {save_path}")
-
+    
     text_scale = 2
-    size = cap.size
+    size = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     count = 1
+    prev_dets = pd.DataFrame()
 
-    for frame in tqdm(cap):
-
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+                
+    #for frame in tqdm(cap):
+        
         timer.tic()
 
         img_copy = frame.copy()
@@ -283,16 +118,36 @@ def main():
 
             columns = ["frame", "cls", "x1", "y1", "x2", "y2", "conf"]
 
-            frame_data = pd.DataFrame(dets, columns=columns)
-            print(frame_data)
+            dets = pd.DataFrame(dets, columns=columns)
+
             embed["cls"] = cls_list
             embed["embs"] = model_reid.extract_features(imgs_list)
             embeddings = pd.DataFrame(embed)
-
             embeddings["team"] = model_reid.classify(
                 embeddings["embs"].to_list(), count
             )
+            detections = dets.to_numpy()
+            results = image_track(
+                tracker, detections[:,1:], embeddings["embs"], args, count
+            )
+            
+            track_columns = [
+                "frame_id",
+                "id",
+                "x1",
+                "y1",
+                "w",
+                "h",
+                "conf",
+                "cls",
+                "none2",
+                "none3",
+            ]
+            data = [tuple(res.split(',')) for res in results]
+            results_df = pd.DataFrame(data, columns=track_columns)
+            embeddings['id'] = results_df['id']
             count += 1
+            prev_dets = deepcopy(results_df)
         else:
             if count % 1 == 0:
                 dets = []
@@ -320,7 +175,6 @@ def main():
                     for conf, box in zip(boxes.conf, boxes.data):
                         x1, y1 = int(offset + box[0]), int(box[1])
                         x2, y2 = int(offset + box[2]), int(box[3])
-
                             
                         conf = conf.detach().cpu().tolist()
                         cls = int(box[5])
@@ -331,28 +185,66 @@ def main():
                         dets.append([count, cls, x1, y1, x2, y2, conf])
                         
                 embed["cls"] = cls_list
-                embed["embs"] = model_reid.extract_features(imgs_list)             
+                embed["embs"] = model_reid.extract_features(imgs_list)
+                embeddings = pd.DataFrame(embed)           
                 
                 dets = pd.DataFrame(dets, columns=["frame", "cls", "x1", "y1", "x2", "y2", "conf"])
+                detections = dets.to_numpy()
+                results = image_track(tracker, detections[:,1:7], embeddings["embs"], args, count)
                 
-                if dets[dets["cls"]==1].shape[0] > 22:
-                    dets1 = dets[dets["cls"]==1].head(22).reset_index(drop=True)
-                else:
-                    dets1 = dets[dets["cls"]==1]
-                    
-                if dets[dets["cls"]==2].shape[0] >= 1:
-                    dets2 = dets[dets["cls"]==2].head(1)
-                    dets_final = pd.concat([dets1, dets2]).reset_index(drop=True)
-                else:
-                    dets_final = dets1
+                track_columns = [
+                    "frame_id",
+                    "id",
+                    "x1",
+                    "y1",
+                    "w",
+                    "h",
+                    "conf",
+                    "cls",
+                    "x_anchor",
+                    "y_anchor",
+                ]
+                data = [tuple(res.split(',')) for res in results]
+                results_df = pd.DataFrame(data, columns=track_columns)
+                results_df['x1'] = results_df['x1'].astype(float).astype(int)
+                results_df['y1'] = results_df['y1'].astype(float).astype(int)
+                dets['x1'] = dets['x1'].astype(int)
+                dets['y1'] = dets['y1'].astype(int)
+
+                df = pd.merge(results_df[['id', 'x1', 'y1', 'w', 'h']], dets[['frame', 'x1', 'y1', 'conf', 'cls']], on=['x1', 'y1'], how='inner')
+                df['h'] = df['h'].astype(float).astype(int)
+                df['w'] = df['w'].astype(float).astype(int)
+                df['id'] = df['id'].astype(int)
+                df['x_anchor'] = (df['x1'] + (df['w'] / 2.0)).astype(int)
+                df['y_anchor'] = (df['y1'] + df['h']).astype(int)
+
+                macht_df = macher.mach(pd.DataFrame(df.head(23)), prev_dets)
                 
-                imgs_list.append(img_copy[y1:y2, x1:x2])
+                for i, row in macht_df.iterrows():
+
+                    x1, y1 = int(row['x1']), int(row['y1'])
+                    x2, y2 = int(x1 + row['w']), int(y1 +row['h'])
+                    xm = int(row['x_anchor'])
+                    ym = int(row['y_anchor'])
+                    h_point = apply_homography_to_point([xm, ym], H)
+                    cv2.circle(img_layout_copy, h_point, 6, collors[2], -1)
+                    cv2.rectangle(
+                        img_copy, (int(x1), int(y1)), (int(x2), int(y2)), collors[2], 1
+                    )
+                    cv2.putText(img_copy, str(int(row['id'])), (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+                    cv2.putText(img_layout_copy, str(int(row['id'])), h_point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+                    _, _, concatenated_img = homographer.prepare_images_for_display(img_copy, img_layout_copy)
+
+                cv2.imshow('field', img_copy)
+                cv2.imshow('layout', img_layout_copy)
+                #cv2.imshow('Video', concatenated_img)
+
+                # Добавляем задержку для показа видео в реальном времени
+                if cv2.waitKey(25) & 0xFF == ord("q"):
+                    break
                 
-                print(dets_final)
-                print(embed["cls"])
-                
-                
-                
-                
+                prev_dets = deepcopy(macht_df)
+                count += 1
+    cap.release()
 if __name__ == "__main__":
     main()

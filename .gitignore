@@ -5,6 +5,7 @@
 runs
 *.mp4
 *.pt
+*.txt
 *.jpg
 !src/
 homography_kornia
