@@ -57,23 +57,24 @@ def main():
 
     save_path = os.path.join(args.save_path, args.path.split("/")[-1])
     
-    #cap = ffmpegcv.VideoCaptureNV(args.path)
-    cap = cv2.VideoCapture(args.path)
-    #fps = cap.fps
-    #vid_writer = ffmpegcv.VideoWriterNV(save_path, "h264", fps)
+    cap = ffmpegcv.VideoCaptureNV(args.path)
+    #cap = cv2.VideoCapture(args.path)
+    fps = cap.fps
+    vid_writer = ffmpegcv.VideoWriterNV(save_path, "h264", fps)
     logger.info(f"save path to video: {save_path}")
     
     text_scale = 2
-    size = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    #size = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    size = cap.size
     count = 1
     prev_dets = pd.DataFrame()
 
-    while cap.isOpened():
+    '''while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            break
+            break'''
                 
-    #for frame in tqdm(cap):
+    for frame in tqdm(cap):
         
         timer.tic()
 
@@ -219,7 +220,7 @@ def main():
                 df['y_anchor'] = (df['y1'] + df['h']).astype(int)
 
                 macht_df = macher.mach(pd.DataFrame(df.head(23)), prev_dets)
-                
+                timer.toc()
                 for i, row in macht_df.iterrows():
 
                     x1, y1 = int(row['x1']), int(row['y1'])
@@ -233,18 +234,31 @@ def main():
                     )
                     cv2.putText(img_copy, str(int(row['id'])), (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
                     cv2.putText(img_layout_copy, str(int(row['id'])), h_point, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+                    cv2.putText(
+                        img_copy,
+                        "frame: %d fps: %.2f num: %d"
+                        % (count, 1.0 / timer.average_time, macht_df.shape[0]),
+                        (0, int(15 * text_scale)),
+                        cv2.FONT_HERSHEY_PLAIN,
+                        2,
+                        (0, 0, 255),
+                        thickness=2,
+                    )
                     _, _, concatenated_img = homographer.prepare_images_for_display(img_copy, img_layout_copy)
 
-                cv2.imshow('field', img_copy)
-                cv2.imshow('layout', img_layout_copy)
-                #cv2.imshow('Video', concatenated_img)
+                if args.show:
+                    #cv2.imshow('field', img_copy)
+                    #cv2.imshow('layout', img_layout_copy)
+                    cv2.imshow('Video', concatenated_img)
 
-                # Добавляем задержку для показа видео в реальном времени
-                if cv2.waitKey(25) & 0xFF == ord("q"):
-                    break
-                
+                    # Добавляем задержку для показа видео в реальном времени
+                    if cv2.waitKey(25) & 0xFF == ord("q"):
+                        break
+                vid_writer.write(concatenated_img)
                 prev_dets = deepcopy(macht_df)
                 count += 1
     cap.release()
+    vid_writer.release()
+
 if __name__ == "__main__":
     main()

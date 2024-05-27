@@ -126,7 +126,7 @@ def make_parser():
     )
     parser.add_argument(
         "--show",
-        default=False,
+        default=True,
         help="Show the processed images",
     )
     parser.add_argument(

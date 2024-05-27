@@ -13,7 +13,6 @@ from tqdm.auto import tqdm
 sys.path.append(".")
 import numpy as np
 from loguru import logger
-from tracker.tracking_utils.timer import Timer
 from tracker.Deep_EIoU import Deep_EIoU
 from ultralytics import YOLO
 import ffmpegcv
@@ -23,7 +22,7 @@ import pandas as pd
 
 # Global
 trackerTimer = Timer()
-timer = Timer()
+
 
 def main():
 
