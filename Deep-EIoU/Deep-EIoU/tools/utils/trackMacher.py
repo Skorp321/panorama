@@ -2,18 +2,20 @@ import pandas as pd
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 
+
 class TrackMacher:
     def __init__(self):
         self.tracks = []
-        self.buffer_df = pd.DataFrame({"pred_track_id": [], "cur_track_id": []})        
+        self.buffer_df = pd.DataFrame({"pred_track_id": [], "cur_track_id": []})
         self.matched_tracs_id_dict = {}
-        self.prev_df = pd.DataFrame(list(range(1,24)), columns=['id'])
+        self.prev_df = pd.DataFrame(list(range(1, 24)), columns=["id"])
         self.buffer_df = pd.DataFrame()
-                
-    def mach(self, tracks_id_dataFrame: pd.DataFrame, prev_dets: pd.DataFrame) -> pd.DataFrame:
-        
-        '''tracks_id_dataFrame['team1'] = 
-        
+
+    def mach(
+        self, tracks_id_dataFrame: pd.DataFrame, prev_dets: pd.DataFrame
+    ) -> pd.DataFrame:
+        """tracks_id_dataFrame['team1'] =
+
         for i in range(len(tracks_id_dataFrame['pred_team'])):
             if (tracks_id_dataFrame['pred_team'][i]  ==  1) & ((results_df.loc[i, 'team2'] + results_df.loc[i, 'team1']) < 102):
                 results_df.loc[i, 'team1'] += 1
@@ -23,47 +25,58 @@ class TrackMacher:
                 results_df.loc[i, 'team2'] += 1
                 if results_df.loc[i, 'team1'] !=  0:
                     results_df.loc[i, 'team1'] -= 1
-                    
+
         results_df['team'] == results_df.apply(lambda row: 1 if row['x1'] > row['y1'] else 2, axis=1)
 
-        teams_stats = results_df[['id', 'team1',  'team2',  'team']]'''
-        
-        tracks = self.prev_df['id'].values.astype(int).tolist()
+        teams_stats = results_df[['id', 'team1',  'team2',  'team']]"""
+
+        tracks = self.prev_df["id"].values.astype(int).tolist()
         matched_tracks = []
         unmatched_tracks = []
-        free_tracks = list(range(1,24))
+        free_tracks = list(range(1, 24))
         matched_tracs_id_dict = self.matched_tracs_id_dict
-        prev_tracs = [int(x) for x in prev_dets['id']]
+        prev_tracs = [int(x) for x in prev_dets["id"]]
         copy_tracks_id_dataFrame = tracks_id_dataFrame.copy()
-        #print(f"Dets trecs: {tracks_id_dataFrame['id'].tolist()}")
+        # print(f"Dets trecs: {tracks_id_dataFrame['id'].tolist()}")
         for _, track in copy_tracks_id_dataFrame.iterrows():
-            if int(track['id']) in tracks:
-                matched_tracks.append(int(track['id']))
-                #print(f"remuv: {int(track['id'])}")
-                if int(track['id']) in free_tracks:
-                    free_tracks.remove(int(track['id']))
-            elif int(track['id']) in list(matched_tracs_id_dict.keys()) and (matched_tracs_id_dict[int(track['id'])] not in tracks_id_dataFrame['id'].tolist()):
-                matched_tracks.append(int(track['id']))
-                #print(f"remuv: {int(track['id'])}")
-                free_tracks.remove(matched_tracs_id_dict[int(track['id'])])
-                tracks_id_dataFrame['id']  = tracks_id_dataFrame['id'].replace(int(track['id']), matched_tracs_id_dict[int(track['id'])])                  
+            if int(track["id"]) in tracks:
+                matched_tracks.append(int(track["id"]))
+                # print(f"remuv: {int(track['id'])}")
+                if int(track["id"]) in free_tracks:
+                    free_tracks.remove(int(track["id"]))
+            elif int(track["id"]) in list(matched_tracs_id_dict.keys()) and (
+                matched_tracs_id_dict[int(track["id"])]
+                not in tracks_id_dataFrame["id"].tolist()
+            ):
+                matched_tracks.append(int(track["id"]))
+                # print(f"remuv: {int(track['id'])}")
+                free_tracks.remove(matched_tracs_id_dict[int(track["id"])])
+                tracks_id_dataFrame["id"] = tracks_id_dataFrame["id"].replace(
+                    int(track["id"]), matched_tracs_id_dict[int(track["id"])]
+                )
             else:
-                unmatched_tracks.append(int(track['id']))
-        #print(f'matched tracks: {matched_tracks}, unmatched tracks: {unmatched_tracks}, free tracks: {free_tracks}')
-        #print(matched_tracs_id_dict)
+                unmatched_tracks.append(int(track["id"]))
+        # print(f'matched tracks: {matched_tracks}, unmatched tracks: {unmatched_tracks}, free tracks: {free_tracks}')
+        # print(matched_tracs_id_dict)
 
         if not unmatched_tracks:
             pass
-        elif (len(unmatched_tracks)  ==  1)  &  (len(free_tracks)  ==  1)  &  (unmatched_tracks[0]  >  23):
+        elif (
+            (len(unmatched_tracks) == 1)
+            & (len(free_tracks) == 1)
+            & (unmatched_tracks[0] > 23)
+        ):
             matched_tracs_id_dict[unmatched_tracks[0]] = free_tracks[0]
 
         else:
-            current_frame_id_unmatched = tracks_id_dataFrame[tracks_id_dataFrame['id'].isin(unmatched_tracks)]
-            #print(current_frame_id_unmatched)
-            prev_frame_id_unmatched = prev_dets[prev_dets['id'].isin(free_tracks)]
-            #print(prev_frame_id_unmatched)
+            current_frame_id_unmatched = tracks_id_dataFrame[
+                tracks_id_dataFrame["id"].isin(unmatched_tracks)
+            ]
+            # print(current_frame_id_unmatched)
+            prev_frame_id_unmatched = prev_dets[prev_dets["id"].isin(free_tracks)]
+            # print(prev_frame_id_unmatched)
 
-        '''
+        """
         
         if len(unmatched_tracks) == 0:
             self.matched_tracs_id_dict = matched_tracs_id_dict
@@ -106,6 +119,6 @@ class TrackMacher:
                 matched_tracs_id_dict[current_frame_id_unmatched.loc[i, 'id']] = prev_frame_id_unmatched.loc[j, 'id']
                 print(matched_tracs_id_dict)
         
-        self.matched_tracs_id_dict = matched_tracs_id_dict'''
-        self.buffer_df =  tracks_id_dataFrame.copy()
+        self.matched_tracs_id_dict = matched_tracs_id_dict"""
+        self.buffer_df = tracks_id_dataFrame.copy()
         return tracks_id_dataFrame
