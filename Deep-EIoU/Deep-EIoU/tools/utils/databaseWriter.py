@@ -33,14 +33,14 @@ class DatabaseWriter:
                                 frame INTEGER,
                                 x INTEGER,
                                 y INTEGER,
-                                team TEXT,
+                                team INTEGER,
                                 id INTEGER,
                                 cls INTEGER,
                                 conf REAL)''')
         
         self.conn.commit()
 
-    def update_db(self, analytics_dict, frame_number_p, scores_dict=None):
+    def update_db(self, analytics_dict, scores_dict=None):
         """
         Updates the SQLite database by inserting a new row with the latest data.
         """
@@ -52,21 +52,18 @@ class DatabaseWriter:
 
         # Extract data for each column, ensuring any NumPy arrays are converted to lists
         #current_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        x = json.dumps([convert_to_list(item) for item in analytics_dict.get('x', [])])
-        y = json.dumps([convert_to_list(item) for item in analytics_dict.get('y', [])])
-        team = json.dumps([convert_to_list(item) for item in analytics_dict.get('ball', [])])
-        id = json.dumps([convert_to_list(item) for item in analytics_dict.get('ball_possession', [])])
-        
+        sql_cols = analytics_dict.loc[:, ["frame", "xm", "ym", "team", "id", "cls", "conf"]]
         # Assume frame_number is calculated or obtained elsewhere
-        frame_number = frame_number_p  # Example to derive frame_number, adjust as necessary
+        #frame_number = analytics_dict['frame']  # Example to derive frame_number, adjust as necessary
         # Get the goal counts for each team from the scores_dict
         #goals_team_a = scores_dict.get('a', 0)
         #goals_team_b = scores_dict.get('b', 0)
         # Insert the data into the database
-        self.cursor.execute('''INSERT INTO analytics (frame, a, b, ball, ball_possession, goals_team_a, goals_team_b, timestamp)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                            (frame_number, x, y, team, id, cls, conf))
+        self.cursor.executemany('''INSERT INTO analytics (frame, x, y, team, id, cls, conf)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                            sql_cols.values)
         self.conn.commit()
+        
     def close_db(self):
         """
         Closes the database connection.

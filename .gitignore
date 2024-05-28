@@ -2,7 +2,12 @@
 .sport_env
 /data
 /models/*
-.vscode
+runs
 *.mp4
+*.pt
+*.txt
+*.jpg
 !src/
 homography_kornia
+Deep-EIoU/Deep-EIoU/datasets/*
+Deep-EIoU/Deep-EIoU/datasets/coco8/*
