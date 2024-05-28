@@ -5,3 +5,12 @@
 .vscode
 *.mp4
 !src/
+runs/
+models/
+homography_kornia/
+*.pt
+*.txt
+*.jpg
+Deep-EIoU/Deep-EIoU/datasets/coco8/LICENSE
+Deep-EIoU/Deep-EIoU/datasets/coco8/README.md
+Deep-EIoU/Deep-EIoU/datasets/coco8/labels/val.cache
