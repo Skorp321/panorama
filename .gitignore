@@ -4,10 +4,15 @@
 /models/*
 runs
 *.mp4
+!src/
+runs/
+models/
+homography_kornia/
 *.pt
 *.txt
 *.jpg
-!src/
+
 homography_kornia
 Deep-EIoU/Deep-EIoU/datasets/*
 Deep-EIoU/Deep-EIoU/datasets/coco8/*
+
