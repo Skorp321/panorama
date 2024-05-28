@@ -15,6 +15,10 @@ yapf
 isort==4.3.21
 imageio
 chardet
+cython_bbox
+lap
+ffmpegcv
+loguru
 # Export --------------------------------------
 # onnx
 # onnx-simplified

@@ -3,8 +3,9 @@ import os
 import sys
 
 import torch
-from utils import Timer
-from utils import TeamClassifier, HomographySetup, DatabaseWriter
+import torch_tensorrt
+
+from utils import TeamClassifier, HomographySetup, DatabaseWriter, Timer
 from utils import write_results, get_crops, image_track, apply_homography_to_point, make_parser
 
 import cv2
@@ -13,6 +14,7 @@ from tqdm.auto import tqdm
 sys.path.append(".")
 import numpy as np
 from loguru import logger
+from tracker.tracking_utils.timer import Timer
 from tracker.Deep_EIoU import Deep_EIoU
 from ultralytics import YOLO
 import ffmpegcv
@@ -22,6 +24,7 @@ import pandas as pd
 
 # Global
 trackerTimer = Timer()
+timer = Timer()
 
 
 def main():
@@ -38,14 +41,20 @@ def main():
     # ReID
     model_reid = TeamClassifier(weights_path=args.path_to_reid, model_name="osnet_x1_0")
 
-    # Tracker
-    tracker = Deep_EIoU(args, frame_rate=60)
+    if args.trt:
+        path_trt = args.path_to_reid.replace('.pt', '.engine')
+        trt_ts_module = torch.jit.load(path_trt)
 
-    # Homography
+        model_reid.extractor.model = trt_ts_module
+
+    # Tracker
+    tracker = Deep_EIoU(args, frame_rate=30)
+    # Detector key points field
+    # model_kpoints = YOLO('yolo8m.pt')
+
     homographer = HomographySetup(args)
     H = homographer.compute_homography_matrix()
 
-    #Database connector and writer
     bd = DatabaseWriter(args)
 
     cap = ffmpegcv.VideoCaptureNV(args.path)
@@ -67,26 +76,25 @@ def main():
         img_copy = frame.copy()
         img_layout_copy = homographer.layout_img.copy()
 
-        if args.fp16:
-            img_copy = img_copy.half()  # to FP16
-
         if count % 1 == 0:
             dets = []
             imgs_list = []
-            cls_list = []
             embed = {"cls": [], "embs": []}
-            
+            cls_list = []
+
             logger.info(f"Processing seq {count} in {size}")
 
             imgs, offsets = get_crops(img_copy)
-            outputs = model(
+            outputs = model.predict(
                 imgs,
                 imgsz=1280,
-                show_conf=False,
-                show_boxes=False,
+                half=True,
+                #show_conf=False,
+                #show_boxes=False,
                 device=0,
                 stream=False,
                 agnostic_nms = True,
+                stream_buffer=True,
                 max_det = 26
             )
             '''ball_output = ball_model(
@@ -130,7 +138,18 @@ def main():
             frame_data = pd.DataFrame(dets, columns=columns)
 
             embed["cls"] = cls_list
-            embed["embs"] = model_reid.extract_features(imgs_list)
+            
+            if args.fp16:
+                imgs_list = resize_images(imgs_list, size=(256, 128))                
+                imgs_list = np.array(imgs_list, dtype=np.float16)
+                imgs_list = torch.tensor(imgs_list, dtype=torch.half)
+                imgs_list = torch.permute(imgs_list, (0, 3, 2, 1))
+                print(imgs_list.shape)
+                #imgs_list = imgs_list.astype(np.float16)  # to FP16
+            #print(imgs_list)
+            embeding = model_reid.extract_features(imgs_list)
+
+            embed["embs"] = embeding[:len(imgs_list)]
             embeddings = pd.DataFrame(embed)
 
             embeddings["team"] = model_reid.classify(
@@ -174,6 +193,7 @@ def main():
                     cv2.rectangle(
                         img_copy, (int(x1), int(y1)), (int(x2), int(y2)), collors[2], 1
                     )
+                    print("Draw ref")
 
             frame_data["xm"], frame_data["ym"] = h_point_x, h_point_y
             frame_data.sort_values(by=["x1", "y1"], inplace=True)
@@ -235,8 +255,7 @@ def main():
             )
 
             if args.show:
-                cv2.imshow('Video', concatenated_img)
-
+                cv2.imshow("Video", concatenated_img)
                 # Добавляем задержку для показа видео в реальном времени
                 if cv2.waitKey(25) & 0xFF == ord("q"):
                     break

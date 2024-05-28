@@ -1,6 +1,9 @@
+import json
 import os
 import cv2
 import numpy as np
+import ffmpegcv
+from ultralytics import YOLO
 
 class HomographySetup:
     def __init__(self, config):
@@ -10,8 +13,8 @@ class HomographySetup:
         self.points_frame = []
 
     def load_and_prepare_images(self):
-        layout_img = cv2.imread(self.config['input_layout_image'])
-        cap = cv2.VideoCapture(self.config['input_video_path'])
+        layout_img = cv2.imread(self.config.path_to_field)
+        cap = ffmpegcv.VideoCaptureNV(self.config.path)
         ret, frame = cap.read()
         cap.release()
 
@@ -20,70 +23,77 @@ class HomographySetup:
             return None, None
 
         return layout_img, frame
+    
+    def get_points_from_layout(self, soccer_field_path_anno: str) -> list:
+        # Чтение всего содержимого файла в одну строку
+        with open('/home/skorp321/Projects/panorama/data/soccer_field_anno/annotations/person_keypoints_default.json', 'r') as file:            
+            data = file.read()
 
-    def click_event(self, event, x, y, flags, params):
-        if event == cv2.EVENT_LBUTTONDOWN:
-            concatenated_img, max_width = params
-            if x < max_width:  # Clicked on the layout image
-                self.points_layout.append((x, y))
-            else:  # Clicked on the video frame
-                self.points_frame.append((x - max_width, y))
-            self.update_display(concatenated_img, max_width)
+        # Преобразование строки в словарь с помощью метода loads
+        data_dict = json.loads(data)
 
-    def update_display(self, concatenated_img, max_width):
-        concatenated_img[:, :] = np.concatenate((self.padded_layout_img, self.padded_first_frame), axis=1)
-        for pt_layout in self.points_layout:
-            cv2.circle(concatenated_img, pt_layout, 5, (255, 0, 0), -1)
-        for pt_frame in self.points_frame:
-            cv2.circle(concatenated_img, (pt_frame[0] + max_width, pt_frame[1]), 5, (0, 255, 0), -1)
-        for pt_layout, pt_frame in zip(self.points_layout, self.points_frame):
-            cv2.line(concatenated_img, pt_layout, (pt_frame[0] + max_width, pt_frame[1]), (0, 0, 255), 2)
-        cv2.imshow("Homography Points Selection", concatenated_img)
+        categoris = data_dict['categories'][0]['keypoints']
+        df = data_dict['annotations'][0]['keypoints']
+
+        res = {}
+        for i, data in enumerate(categoris):
+            res[data] = df[(i*3):((i+1)*3)-1]
+            
+        sorted_list = sorted(res.items(), key=lambda x: x[0])
+
+        # Преобразуем список обратно в словарь
+        sorted_dict = {k: v for k, v in sorted_list}
+        print(sorted_dict)
+        return list(sorted_dict.values())
+
 
     def compute_homography_matrix(self):
-        if self.config['h_matrix_path'] and os.path.exists(self.config['h_matrix_path']):
-            return np.load(self.config['h_matrix_path'])
+        if self.config.h_matrix_path and os.path.exists(self.config.h_matrix_path):
+            print('Try to finde homography matrixe')
+            print(np.load(self.config.h_matrix_path))
+            return np.load(self.config.h_matrix_path)
+        else:
+            '''model_keypoint = YOLO(self.config.path_to_keypoints_det)
+            outputs = model_keypoint(self.first_frame, half=True, device=0, imgsz=1280)[0]
+            field_points = outputs.keypoints.xy.detach().cpu().tolist()
+            print(outputs.keypoints)'''
+            # Чтение всего содержимого файла в одну строку
+            with open('/home/skorp321/Projects/panorama/data/Swiss_vs_Slovakia-panoramic_video_anno/annotations/person_keypoints_default.json', 'r') as file:            
+                data = file.read()
 
-        self.padded_layout_img, self.padded_first_frame, concatenated_img = self.prepare_images_for_display()
-        max_width = max(self.layout_img.shape[1], self.first_frame.shape[1])
+            # Преобразование строки в словарь с помощью метода loads
+            data_dict = json.loads(data)
 
-        cv2.namedWindow("Homography Points Selection", cv2.WINDOW_NORMAL)
-        cv2.imshow("Homography Points Selection", concatenated_img)
-        cv2.setMouseCallback("Homography Points Selection", self.click_event, (concatenated_img, max_width))
+            categoris = data_dict['categories'][0]['keypoints']
+            df = data_dict['annotations'][0]['keypoints']
 
-        print("Instructions:")
-        print("- Click corresponding points on the layout image and the video frame.")
-        print("- Press 'y' to confirm and calculate homography.")
-        print("- Press 'Esc' to quit.")
-        print("- Press 'r' to remove the last point match.")
+            res = {}
+            for i, data in enumerate(categoris):
+                res[data] = df[(i*3):((i+1)*3)-1]
+                
+            sorted_list = sorted(res.items(), key=lambda x: x[0])
 
-        while True:
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27:  # Esc key
-                cv2.destroyAllWindows()
-                return None  # Return early since homography cannot be computed
-            elif key == ord('y'):
-                if len(self.points_layout) >= 4 and len(self.points_frame) >= 4:
-                    H, _ = cv2.findHomography(np.array(self.points_frame), np.array(self.points_layout))
-                    if self.config['h_matrix_path']:
-                        np.save(self.config['h_matrix_path'], H)
-                    cv2.destroyAllWindows()
-                    return H
-                else:
-                    print("Not enough points to compute homography.")
-                    cv2.destroyAllWindows()
-                    return None  # Return early since homography cannot be computed
-            elif key == ord('r') and self.points_layout and self.points_frame:  # Remove the last point match
-                self.points_layout.pop()
-                self.points_frame.pop()
-                self.update_display(concatenated_img, max_width)
+            # Преобразуем список обратно в словарь
+            sorted_dict = {k: v for k, v in sorted_list}
 
-    def prepare_images_for_display(self):
-        max_height = max(self.layout_img.shape[0], self.first_frame.shape[0])
-        max_width = max(self.layout_img.shape[1], self.first_frame.shape[1])
+            field_points = list(sorted_dict.values())
+            layout_points = self.get_points_from_layout(self.config.path_to_field_points)
+            
+            H, _ = cv2.findHomography(np.array(field_points), np.array(layout_points))
+            print(H)
+            self.config.h_matrix_path = '/home/skorp321/Projects/panorama/data/h_matrix_path.npy'
+            np.save(self.config.h_matrix_path, H)
+            return np.load(self.config.h_matrix_path)
 
-        padded_layout_img = cv2.copyMakeBorder(self.layout_img, 0, max_height - self.layout_img.shape[0], 0, max_width - self.layout_img.shape[1], cv2.BORDER_CONSTANT, value=[0, 0, 0])
-        padded_first_frame = cv2.copyMakeBorder(self.first_frame, 0, max_height - self.first_frame.shape[0], 0, max_width - self.first_frame.shape[1], cv2.BORDER_CONSTANT, value=[0, 0, 0])
 
-        concatenated_img = np.concatenate((padded_layout_img, padded_first_frame), axis=1)
+    def prepare_images_for_display(self, frame, layout):#, layout):
+        max_height = max(layout.shape[0], frame.shape[0])
+        max_width = max(layout.shape[1], frame.shape[1])
+        
+        horizontal_margin = int((max_width - layout.shape[1]) / 2.)
+        
+        padded_layout_img = cv2.copyMakeBorder(layout, 0, 0, horizontal_margin+1, horizontal_margin, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+        padded_first_frame = cv2.copyMakeBorder(frame, 0, max_height - frame.shape[0], 0, max_width - frame.shape[1], cv2.BORDER_CONSTANT, value=[0, 0, 0])
+
+        concatenated_img = np.concatenate((padded_layout_img, padded_first_frame), axis=0)
         return padded_layout_img, padded_first_frame, concatenated_img
