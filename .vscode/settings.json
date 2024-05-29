@@ -1,13 +1,4 @@
 {
-    "cSpell.words": [
-        "astype",
-        "collors",
-        "homographer",
-        "homography",
-        "imshow",
-        "macher",
-        "macht"
-    ],
-    "CodeGPT.apiKey": "CodeGPT Plus Beta",
-    "wolf.disableHotModeWarning": true
+    "wolf.disableHotModeWarning": true,
+    "CodeGPT.apiKey": "CodeGPT Plus Beta"
 }

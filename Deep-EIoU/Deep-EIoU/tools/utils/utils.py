@@ -3,6 +3,7 @@ import os
 from loguru import logger
 import numpy as np
 import pandas as pd
+import torch
 from .stimer import Timer
 import argparse
 
@@ -20,10 +21,10 @@ def write_results(filename, results):
                 line = save_format.format(frame=frame_id, id=track_id, x1=round(x1, 1), y1=round(y1, 1), w=round(w, 1),
                                           h=round(h, 1), s=round(score, 2))
                 f.write(line)
-    logger.info('save results to {}'.format(filename))
+    logger.info(f'save results to {filename}')
 
 
-def get_crops(img, crop_width=1280, offset=0):
+def get_crops(img, crop_width=640, offset=30):
     """
     Generate crops from an image.
     Args:
@@ -50,17 +51,27 @@ def get_crops(img, crop_width=1280, offset=0):
 
 
 def image_track(tracker, detections, embeddings, args, frame_id):
-    
-    results = []
-    
-    num_frames = len(detections)
-    clss = detections[:,0]
+    '''
+    Generates results based on tracker updates for each frame.
 
+    #### Args:
+    - tracker: The tracker object used for updating.
+    - detections: Numpy array of detections for the current frame.
+    - embeddings: Embeddings for the detections.
+    - args: Arguments containing aspect ratio threshold and minimum box area.
+    - frame_id: The ID of the current frame.
+
+    #### Returns:
+    List of formatted results for each valid detection.
+    '''
+    results = []
+
+    num_frames = len(detections)
     scale = min(1440/1280, 800/720)
 
-    det = detections[:, 1:]
+    det = detections[:, :-1]
     embs = embeddings
-    
+
     if det is not None:
 
         trackerTimer.tic()
@@ -70,13 +81,15 @@ def image_track(tracker, detections, embeddings, args, frame_id):
         online_tlwhs = []
         online_ids = []
         online_scores = []
+        clss = detections[:,0]
+
         for t, cls in zip(online_targets, clss):
             tlwh = t.last_tlwh
-            tid = t.track_id
             vertical = tlwh[2] / tlwh[3] > args.aspect_ratio_thresh
             #vertical = False
             if tlwh[2] * tlwh[3] > args.min_box_area and not vertical:
                 online_tlwhs.append(tlwh)
+                tid = t.track_id
                 online_ids.append(tid)
                 online_scores.append(t.score)
 
@@ -84,10 +97,8 @@ def image_track(tracker, detections, embeddings, args, frame_id):
                 results.append(
                     f"{frame_id},{tid},{tlwh[0]:.2f},{tlwh[1]:.2f},{tlwh[2]:.2f},{tlwh[3]:.2f},{t.score:.2f},-1,-1,-1\n"
                 )
-        timer.toc()
+    timer.toc()
 
-    else:
-        timer.toc()
     if frame_id % 100 == 0:
         logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, num_frames, 1. / max(1e-5, timer.average_time)))
 
@@ -99,21 +110,19 @@ def image_track(tracker, detections, embeddings, args, frame_id):
 
 
 def apply_homography_to_point(point, H):
-    if point is not None:
-        point = np.array(point)
-        
-        # Convert point to homogeneous coordinates
-        point_homogeneous = np.append(point, 1)
-        
-        # Apply the homography matrix
-        #point_transformed_homogeneous = np.dot(H, point_homogeneous)
-        point_transformed_homogeneous = np.matmul(H, np.transpose(point_homogeneous))  
-        # Convert back to Cartesian coordinates
-        point_transformed = point_transformed_homogeneous[:2] / point_transformed_homogeneous[2]
-        point_transformed = [int(np.abs(value)) for value in point_transformed]
-        return point_transformed
-    else:
+    if point is None:
         return point
+    point = np.array(point)
+
+    # Convert point to homogeneous coordinates
+    point_homogeneous = np.append(point, 1)
+
+    # Apply the homography matrix
+    #point_transformed_homogeneous = np.dot(H, point_homogeneous)
+    point_transformed_homogeneous = np.matmul(H, np.transpose(point_homogeneous))
+    # Convert back to Cartesian coordinates
+    point_transformed = point_transformed_homogeneous[:2] / point_transformed_homogeneous[2]
+    return [int(np.abs(value)) for value in point_transformed]
     
 
 def make_parser():
@@ -288,3 +297,74 @@ def make_parser():
     )
 
     return parser
+
+def iou(box1, box2):
+    """
+    Compute the Intersection Over Union (IoU) of two bounding boxes.
+
+    Parameters
+    ----------
+    box1 : ndarray
+        (x1, y1, x2, y2) of the first box.
+    box2 : ndarray
+        (x1, y1, x2, y2) of the second box.
+
+    Returns
+    -------
+    float
+        in [0, 1]
+    """
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+
+    inter_area = max(0, x2 - x1) * max(0, y2 - y1)
+
+    box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+
+    union_area = box1_area + box2_area - inter_area
+
+    return inter_area / union_area if union_area != 0 else 0
+
+def non_max_suppression(boxes, iou_threshold):
+    """
+    Perform non-maximum suppression, given a list of boxes with their
+    corresponding scores and class labels.
+
+    Parameters
+    ----------
+    boxes : list of lists or 2D ndarray
+        List with elements [x1, y1, x2, y2, score, class_label].
+    iou_threshold : float
+        Threshold for IoU to determine whether boxes overlap too much.
+
+    Returns
+    -------
+    list of lists
+        Filtered boxes after NMS.
+    """
+    boxes = boxes.to_numpy()
+    new_boxes = boxes.copy()
+    
+    new_boxes[:,:-1] = boxes[:,1:]
+    new_boxes[:,-1] = boxes[:,0]
+    boxes = new_boxes
+
+    if len(boxes) == 0:
+        return []
+
+    # Sort the boxes by score in descending order
+    boxes = sorted(boxes, key=lambda x: x[4], reverse=True)
+    picked_boxes = []
+
+    while boxes:
+        # Pick the box with the highest score
+        current_box = boxes.pop(0)
+        picked_boxes.append(current_box)
+
+        # Compare the picked box with the rest of the boxes
+        boxes = [box for box in boxes if box[5] != current_box[5] or iou(current_box, box) <= iou_threshold]
+
+    return np.array(picked_boxes)

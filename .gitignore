@@ -1,5 +1,6 @@
 .env
 .sport_env
+.vscode
 /data
 /models/*
 runs
@@ -13,6 +14,8 @@ homography_kornia/
 *.jpg
 *.pyc
 *.partial
+.wolf*
+Deep-EIoU/Deep-EIoU/tools/utils/__pycache__/*
 
 homography_kornia
 Deep-EIoU/Deep-EIoU/datasets/*
