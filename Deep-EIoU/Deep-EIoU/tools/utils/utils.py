@@ -3,7 +3,9 @@ import os
 from loguru import logger
 import numpy as np
 import pandas as pd
+
 import torch
+
 from .stimer import Timer
 import argparse
 
@@ -70,6 +72,7 @@ def image_track(tracker, detections, embeddings, args, frame_id):
     scale = min(1440/1280, 800/720)
 
     det = detections[:, :-1]
+
     embs = embeddings
 
     if det is not None:
@@ -81,6 +84,7 @@ def image_track(tracker, detections, embeddings, args, frame_id):
         online_tlwhs = []
         online_ids = []
         online_scores = []
+
         clss = detections[:,0]
 
         for t, cls in zip(online_targets, clss):
@@ -110,6 +114,7 @@ def image_track(tracker, detections, embeddings, args, frame_id):
 
 
 def apply_homography_to_point(point, H):
+
     if point is None:
         return point
     point = np.array(point)
@@ -295,7 +300,6 @@ def make_parser():
         default=0.25,
         help="threshold for rejecting low appearance similarity reid matches",
     )
-
     return parser
 
 def iou(box1, box2):
@@ -368,3 +372,4 @@ def non_max_suppression(boxes, iou_threshold):
         boxes = [box for box in boxes if box[5] != current_box[5] or iou(current_box, box) <= iou_threshold]
 
     return np.array(picked_boxes)
+

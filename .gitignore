@@ -16,8 +16,6 @@ homography_kornia/
 *.partial
 .wolf*
 Deep-EIoU/Deep-EIoU/tools/utils/__pycache__/*
-
-homography_kornia
 Deep-EIoU/Deep-EIoU/datasets/*
 Deep-EIoU/Deep-EIoU/datasets/coco8/*
 

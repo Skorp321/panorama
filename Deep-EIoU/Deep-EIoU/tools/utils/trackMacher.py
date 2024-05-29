@@ -6,6 +6,7 @@ class TrackMacher:
     def __init__(self):
         self.tracks = []
         self.buffer_df = pd.DataFrame({"pred_track_id": [], "cur_track_id": []})        
+
         self.matched_tracs_id_dict = {}
                 
     def mach(self, tracks_id_dataFrame: pd.DataFrame, prev_dets: pd.DataFrame) -> pd.DataFrame:
@@ -16,11 +17,13 @@ class TrackMacher:
         matched_tracs_id_dict = self.matched_tracs_id_dict
         prev_tracs = [int(x) for x in prev_dets['id']]
         print(tracks_id_dataFrame['id'])
+
         for _, track in tracks_id_dataFrame.iterrows():
             if int(track['id']) in self.tracks:
                 self.tracks.remove(int(track['id']))
                 if int(track['id']) in prev_tracs:
                     prev_tracs.remove(int(track['id']))
+
             elif int(track['id']) in list(matched_tracs_id_dict.values()):
                 tracks_id_dataFrame['id'] = tracks_id_dataFrame['id'].replace(matched_tracs_id_dict)
                 #tracks_id_dataFrame.loc[tracks_id_dataFrame['id'] == list(matched_tracs_id_dict.keys())[0], 'id'] = list(matched_tracs_id_dict.values())[0]
@@ -38,6 +41,7 @@ class TrackMacher:
             tracks_id_dataFrame['id'] = tracks_id_dataFrame['id'].replace(unmatched_tracks[0], self.tracks[0])
             #tracks_id_dataFrame.loc[tracks_id_dataFrame['id'] == list(matched_tracs_id_dict.keys())[0], 'id'] = list(matched_tracs_id_dict.values())[0]
             self.matched_tracs_id_dict = matched_tracs_id_dict
+
             return tracks_id_dataFrame
         else:
             current_frame_id_unmatched = tracks_id_dataFrame[tracks_id_dataFrame['id'].isin(unmatched_tracks)]
@@ -59,10 +63,12 @@ class TrackMacher:
             # Решение задачи сопоставления с минимальной стоимостью (расстоянием)
             row_ind, col_ind = linear_sum_assignment(distance_matrix)
 
+
             for i, j in zip(row_ind, col_ind):
                 tracks_id_dataFrame.loc[tracks_id_dataFrame['id'] == current_frame_id_unmatched.loc[i, 'id'], 'id'] = prev_frame_id_unmatched.loc[j, 'id']
                 matched_tracs_id_dict[current_frame_id_unmatched.loc[i, 'id']] = prev_frame_id_unmatched.loc[j, 'id']
         
         print(matched_tracs_id_dict)
         self.matched_tracs_id_dict = matched_tracs_id_dict
+
         return tracks_id_dataFrame

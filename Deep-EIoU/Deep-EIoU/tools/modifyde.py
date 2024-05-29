@@ -4,20 +4,19 @@ import sys
 
 from copy import deepcopy
 
-import torch
 from utils import (
     TeamClassifier, 
     HomographySetup, 
     DatabaseWriter, 
     Timer, 
     TrackMacher)
+
 from utils import (write_results, 
                    get_crops, 
                    image_track, 
                    apply_homography_to_point, 
                    make_parser,
                    non_max_suppression)
-import supervision as sv
 
 import cv2
 from tqdm.auto import tqdm
@@ -25,9 +24,11 @@ from tqdm.auto import tqdm
 sys.path.append(".")
 import numpy as np
 from loguru import logger
+
 from tracker.Deep_EIoU import Deep_EIoU
 from ultralytics import YOLO
 import ffmpegcv
+
 from sklearn.cluster import KMeans
 import pandas as pd
 
@@ -106,6 +107,7 @@ def main():
                 max_det = 26
             )
 
+
             dets = []
             for offset, result in zip(offsets, outputs):#, ball_output):
                 boxes = result.boxes  # Boxes object for bounding box outputs
@@ -125,14 +127,20 @@ def main():
             columns = ["frame", "cls", "x1", "y1", "x2", "y2", "conf"]
 
             dets = pd.DataFrame(dets, columns=columns)
+
             dets = non_max_suppression(dets[["cls", "x1", "y1", "x2", "y2", "conf"]], 0.5)
+
             embed["cls"] = cls_list
             embed["embs"] = model_reid.extract_features(imgs_list)
             embeddings = pd.DataFrame(embed)
             embeddings["team"] = model_reid.classify(
                 embeddings["embs"].to_list(), count
             )
+
             results = image_track(tracker, dets, embeddings["embs"], args, count)
+
+            detections = dets.to_numpy()
+            results = image_track(tracker, detections[:,1:], embeddings["embs"], args, count)
 
             track_columns = [
                 "frame_id",
@@ -151,6 +159,7 @@ def main():
             embeddings['id'] = results_df['id']
             count += 1
             prev_dets = deepcopy(results_df)
+
         elif count % 1 == 0:
             dets = []
             imgs_list = []
@@ -268,6 +277,7 @@ def main():
             vid_writer.write(concatenated_img)
             prev_dets = deepcopy(macht_df)
             count += 1
+
     cap.release()
     vid_writer.release()
 
