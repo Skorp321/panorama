@@ -1,6 +1,7 @@
 .env
 .vscode
 .sport_env
+.vscode
 /data
 /models/*
 .vscode

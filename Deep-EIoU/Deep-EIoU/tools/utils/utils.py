@@ -66,7 +66,7 @@ def image_track(tracker, detections, embeddings, args, frame_id):
 
     scale = min(1440 / 1280, 800 / 720)
 
-    det = detections[:, 1:]
+    det = detections[:, :-1]
     embs = embeddings
 
     if det is not None:
@@ -81,6 +81,8 @@ def image_track(tracker, detections, embeddings, args, frame_id):
         online_tlwhs = []
         online_ids = []
         online_scores = []
+        clss = detections[:, 0]
+
         for t, cls in zip(online_targets, clss):
             tlwh = t.last_tlwh
             vertical = tlwh[2] / tlwh[3] > args.aspect_ratio_thresh

@@ -107,7 +107,7 @@ def main():
             imgs, offsets = get_crops(img_copy)
             outputs = model(
                 imgs,
-                imgsz=1280,
+                imgsz=640,
                 show_conf=False,
                 show_boxes=False,
                 device=0,
