@@ -9,5 +9,7 @@ from .utils import (write_results,
                     non_max_suppression)
 from .databaseWriter import DatabaseWriter
 from .trackMacher import TrackMacher
+from .team_assigner import TeamAssigner
+from .team_matcher import teamMatcher
 
 #__all__ = ['write_results', 'get_crops', 'image_track', 'Timer', 'TeamClassifier', 'HomographySetup']

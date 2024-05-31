@@ -244,12 +244,12 @@ def make_parser():
         "--new_track_thresh", default=0.7, type=float, help="new track thresh"
     )
     parser.add_argument(
-        "--track_buffer", type=int, default=60, help="the frames for keep lost tracks"
+        "--track_buffer", type=int, default=160, help="the frames for keep lost tracks"
     )
     parser.add_argument(
         "--match_thresh",
         type=float,
-        default=0.8,
+        default=0.7,
         help="matching threshold for tracking",
     )
     parser.add_argument(
