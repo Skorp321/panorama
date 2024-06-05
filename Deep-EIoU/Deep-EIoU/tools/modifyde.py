@@ -9,8 +9,12 @@ from utils import (
     DatabaseWriter, 
     Timer, 
     TrackMacher)
-from utils import write_results, get_crops, image_track, apply_homography_to_point, make_parser
-import supervision as sv
+from utils import (
+    write_results, 
+    get_crops, 
+    image_track, 
+    apply_homography_to_point, 
+    make_parser)
 
 import cv2
 from tqdm.auto import tqdm
@@ -22,7 +26,6 @@ from tracker.tracking_utils.timer import Timer
 from tracker.Deep_EIoU import Deep_EIoU
 from ultralytics import YOLO
 import ffmpegcv
-from torchreid.utils import FeatureExtractor
 from sklearn.cluster import KMeans
 import pandas as pd
 
@@ -90,17 +93,16 @@ def main():
             cls_list = []
             embed = {"cls": [], "embs": []}
             
-            imgs, offsets = get_crops(img_copy)
-            outputs = model(
-                imgs,
-                imgsz=1280,
-                show_conf=False,
-                show_boxes=False,
-                device=0,
-                stream=False,
-                agnostic_nms = True,
-                max_det = 26
-            )
+            imgs, offsets = get_crops(img_copy, offset=30)
+            outputs = model(imgs,
+                            imgsz=1280,
+                            show_conf=False,
+                            show_boxes=False,
+                            device=0,
+                            stream=False,
+                            agnostic_nms = True,
+                            max_det = 26
+                        )
             
             for offset, result in zip(offsets, outputs):#, ball_output):
                 boxes = result.boxes  # Boxes object for bounding box outputs
