@@ -32,17 +32,16 @@ class TeamClassifier:
     def classify(self, reid_features, count):
         # Classification by kmeans:
         pd_embs = pd.DataFrame(reid_features)
-        
+
         if count < 3:
             self.embs_for_train = pd.concat([self.embs_for_train, pd_embs], ignore_index=True)
             pd_shuffled = self.embs_for_train.sample(frac=1)
             #self.embs_for_train = pd_embs
             #print(self.embs_for_train)
             #db = self.db.fit(self.embs_for_train)
-            self.k_means.fit(pd_shuffled)
-                
-        team_preds = self.k_means.predict(pd_embs)
-        #team_preds = db.labels_
+            if pd_shuffled.shape[0] > 1:
+                self.k_means.fit(pd_shuffled)
+            else:
+                return [1]
 
-
-        return team_preds
+        return self.k_means.predict(pd_embs)

@@ -22,10 +22,7 @@ class Timer(object):
         self.total_time += self.diff
         self.calls += 1
         self.average_time = self.total_time / self.calls
-        if average:
-            self.duration = self.average_time
-        else:
-            self.duration = self.diff
+        self.duration = self.average_time if average else self.diff
         return self.duration
 
     def clear(self):
