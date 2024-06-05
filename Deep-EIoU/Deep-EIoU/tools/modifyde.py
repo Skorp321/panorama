@@ -169,7 +169,7 @@ def main():
             count += 1
             prev_dets = deepcopy(results_df)
 
-        elif count % 1 == 0:
+        elif count % 4 == 0:
             dets = []
             imgs_list = []
             cls_list = []
@@ -343,8 +343,7 @@ def main():
                     break
             vid_writer.write(concatenated_img)
             prev_dets = deepcopy(macht_df)
-            count += 1
-
+        count += 1
     cap.release()
     vid_writer.release()
 
