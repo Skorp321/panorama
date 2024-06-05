@@ -142,7 +142,7 @@ def main():
                 embeddings["embs"].to_list(), count
             )
 
-            results = image_track(tracker, dets, embeddings["embs"], args, count)
+            results = image_track(tracker, dets, embeddings["embs"], args.save_path, args, count)
 
             track_columns = [
                 "frame_id",
@@ -202,7 +202,7 @@ def main():
 
             embed["embs"] = model_reid.extract_features(imgs_list)
             embeddings = pd.DataFrame(embed)
-            results = image_track(tracker, dets_nms, embeddings["embs"], args, count)
+            results = image_track(tracker, dets_nms, embeddings["embs"], args.save_path, args, count)
             
             track_columns = [
                 "frame_id",

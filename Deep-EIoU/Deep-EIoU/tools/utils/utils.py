@@ -1,8 +1,10 @@
+import argparse
 import os
 
 import cv2
 from loguru import logger
-from stimer import Timer
+import numpy as np
+from .stimer import Timer
 
 trackerTimer = Timer()
 timer = Timer()
@@ -18,7 +20,7 @@ def write_results(filename, results):
                 line = save_format.format(frame=frame_id, id=track_id, x1=round(x1, 1), y1=round(y1, 1), w=round(w, 1),
                                           h=round(h, 1), s=round(score, 2))
                 f.write(line)
-    logger.info('save results to {}'.format(filename))
+    logger.info(f'save results to {filename}')
 
 
 def get_crops(img, crop_width=1280, offset=30):
@@ -50,19 +52,20 @@ def get_crops(img, crop_width=1280, offset=30):
 def image_track(tracker, detections, embeddings, sct_output_path, args, frame_id):
     
     results = []
-    
+
     num_frames = len(detections)
+    cls = detections[:,0]
 
     scale = min(1440/1280, 800/720)
 
-    det = detections
+    det = detections[:, 1:]
     embs = embeddings
-    
+
     if det is not None:
 
         '''embs = [e[0] for e in embs]
         embs = np.array(embs)'''
-        
+
         trackerTimer.tic()
         online_targets = tracker.update(det, embs)
         trackerTimer.toc()
@@ -72,11 +75,11 @@ def image_track(tracker, detections, embeddings, sct_output_path, args, frame_id
         online_scores = []
         for t in online_targets:
             tlwh = t.last_tlwh
-            tid = t.track_id
             vertical = tlwh[2] / tlwh[3] > args.aspect_ratio_thresh
             vertical = False
             if tlwh[2] * tlwh[3] > args.min_box_area and not vertical:
                 online_tlwhs.append(tlwh)
+                tid = t.track_id
                 online_ids.append(tid)
                 online_scores.append(t.score)
 
@@ -84,10 +87,8 @@ def image_track(tracker, detections, embeddings, sct_output_path, args, frame_id
                 results.append(
                     f"{frame_id},{tid},{tlwh[0]:.2f},{tlwh[1]:.2f},{tlwh[2]:.2f},{tlwh[3]:.2f},{t.score:.2f},-1,-1,-1\n"
                 )
-        timer.toc()
+    timer.toc()
 
-    else:
-        timer.toc()
     if frame_id % 100 == 0:
         logger.info('Processing frame {}/{} ({:.2f} fps)'.format(frame_id, num_frames, 1. / max(1e-5, timer.average_time)))
 
@@ -120,6 +121,11 @@ def make_parser():
     parser.add_argument(
         "--path",
         default="/home/skorp321/Projects/panorama/data/Swiss_vs_Slovakia-panoramic_video.mp4",
+        help="path to images or video",
+    )
+    parser.add_argument(
+        "--input_layout_image",
+        default="/home/skorp321/Projects/panorama/data/soccer_field.png",
         help="path to images or video",
     )
     parser.add_argument(

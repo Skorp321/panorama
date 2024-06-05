@@ -4,4 +4,16 @@
 /models/*
 .vscode
 *.mp4
+runs
+*.jpg
+*.mp4
+*.pyc
+*.txt
+*.pt
+*.partial
+*.cache
+*.jpeg
+homography_kornia
+Deep-EIoU/Deep-EIoU/datasets/*
+Deep-EIoU/Deep-EIoU.tools/__pycache__/*
 !src/
