@@ -124,7 +124,7 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser):
     st_prog_bar = st.progress(0, text='Detection starting.')
     size = cap.size
     count = 1
-    percent_complete = int(count/(cap)*100)
+    percent_complete = int(count/(cap.count)*100)
     prev_dets = pd.DataFrame()
 
     '''while cap.isOpened():
@@ -327,9 +327,9 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser):
             #img_copy = cv2.cvtColor(img_copy, cv2.COLOR_RGB2BGR)
             _, _, concatenated_img = homographer.prepare_images_for_display(img_copy, img_layout_copy)
             
-            drow_metrics(concatenated_img, timer, count, size, macht_df, text_scale)
+            drow_metrics(concatenated_img, timer, count, cap.count, macht_df, text_scale)
 
-            concatenated_img = cv2.resize(concatenated_img, None, fx=0.6, fy=0.6, interpolation=cv2.INTER_LINEAR)
+            #concatenated_img = cv2.resize(concatenated_img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)
             
             if args.show:
                 #cv2.imshow('field', img_copy)
@@ -356,7 +356,7 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser):
             #img_copy = cv2.cvtColor(img_copy, cv2.COLOR_RGB2BGR)
             _, _, concatenated_img = homographer.prepare_images_for_display(img_copy, img_layout_copy)
             
-            drow_metrics(concatenated_img, timer, count, size, macht_df, text_scale)
+            drow_metrics(concatenated_img, timer, count, cap, macht_df, text_scale)
 
             if args.show:
                 #cv2.imshow('field', img_copy)
@@ -370,8 +370,7 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser):
             if save_output:
                 vid_writer.write(concatenated_img)
             prev_dets = deepcopy(macht_df)
-            
-        percent_complete = int(count/(cap)*100)
+
         st_prog_bar.progress(percent_complete, text=f"Detection in progress ({percent_complete}%)")
         count += 1
     cap.release()
