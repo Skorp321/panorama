@@ -75,7 +75,7 @@ def main():
             imgs_list = []
             cls_list = []
             embed = {"cls": [], "embs": []}
-            
+
             logger.info(f"Processing seq {count} in {size}")
 
             imgs, offsets = get_crops(img_copy)
@@ -97,7 +97,7 @@ def main():
                 device=0,
                 stream=False,
             )'''
-            
+
             #bal_box = ball_output[0].boxes.data[0]
 
             # Process results list
@@ -116,7 +116,7 @@ def main():
                     x1, y1 = int(offset + box[0]), int(box[1])
                     x2, y2 = int(offset + box[2]), int(box[3])
 
-                        
+
                     conf = conf.detach().cpu().tolist()
                     cls = int(box[5])
                     collor = collors[cls]
@@ -153,7 +153,7 @@ def main():
                     if team == 0:
                         collor = collors[0]
                         team1 += 1
-                    if team == 1:
+                    elif team == 1:
                         collor = collors[1]
                         team2 += 1
 
@@ -176,10 +176,10 @@ def main():
                     )
 
             frame_data["xm"], frame_data["ym"] = h_point_x, h_point_y
-            frame_data.sort_values(by=["x1", "y1"], inplace=True)
+            frame_data = frame_data.sort_values(by=["x1", "y1"])
             #print(f"Team 1: {team1}, team 2: {team2}")
             detections = arr[:, 2:]
-            
+
             results = image_track(
                 tracker, detections, embeddings["embs"], args, count
             )
@@ -198,8 +198,8 @@ def main():
             data = [tuple(res.split(',')) for res in results]
             results_df = pd.DataFrame(data, columns=track_columns)
             results_df = results_df.loc[:, ["id", "x1", "y1"]]
-            results_df['x1'] = results_df['x1'].astype(float)    
-            results_df['id'] = results_df['id'].astype(int)   
+            results_df['x1'] = results_df['x1'].astype(float)
+            results_df['id'] = results_df['id'].astype(int)
             results_df = results_df.sort_values(by=["x1"])
             frame_data = pd.concat([frame_data, results_df], axis=1)
 
@@ -240,7 +240,6 @@ def main():
                 # Добавляем задержку для показа видео в реальном времени
                 if cv2.waitKey(25) & 0xFF == ord("q"):
                     break
-            count += 1
             vid_writer.write(concatenated_img)
             bd.update_db(frame_data)
         else:
@@ -256,15 +255,15 @@ def main():
                 thickness=2,
             )
             _, _, concatenated_img = homographer.prepare_images_for_display(img_copy)
-            
+
             if args.show:
                 cv2.imshow("Video", concatenated_img)
                 # Добавляем задержку для показа видео в реальном времени
                 if cv2.waitKey(25) & 0xFF == ord("q"):
                     break
-            count += 1
             vid_writer.write(concatenated_img)
-        
+
+        count += 1
     bd.close_db()
     cap.release()
     vid_writer.release()

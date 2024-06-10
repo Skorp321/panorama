@@ -16,7 +16,6 @@ class teamMatcher:
     def update_matches(self, ids: np.array, matches: np.array) -> pd.DataFrame:
         res_list = []
         df = self.player_team_matcher
-        print(ids)
         for i, id in enumerate(ids):
             if id not in df["id"].tolist():
                 df.loc[len(df)] = {"id": id, "team1": 0, "team2": 0, "current_team": 0}

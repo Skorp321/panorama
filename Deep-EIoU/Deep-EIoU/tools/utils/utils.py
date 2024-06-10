@@ -161,7 +161,7 @@ def make_parser():
     )
     parser.add_argument(
         "--path_to_field_points",
-        default="/home/skorp321/Projects/panorama/data/soccer_field.png",
+        default="/home/skorp321/Projects/panorama/data/soccer_field_anno/annotations/person_keypoints_default.json",
         help="path to soccer field image",
     )
     parser.add_argument(

@@ -97,7 +97,7 @@ def main():
         img_layout_copy = homographer.layout_img.copy()
 
         if args.fp16:
-            img_copy = img_copy.half()  # to FP16
+            img_copy = img_copy.astype("float16")  # to FP16
 
         if count <= args.init_tresh:
             imgs_list = []
@@ -169,7 +169,7 @@ def main():
             count += 1
             prev_dets = deepcopy(results_df)
 
-        elif count % 4 == 0:
+        elif count % 1 == 0:
             dets = []
             imgs_list = []
             cls_list = []
@@ -285,7 +285,7 @@ def main():
 
             macht_df = macher.mach(pd.DataFrame(df.head(23)), prev_dets)
             timer.toc()
-            img_copy = cv2.cvtColor(img_copy, cv2.COLOR_RGB2BGR)
+            # img_copy = cv2.cvtColor(img_copy, cv2.COLOR_RGB2BGR)
             for i, row in macht_df.iterrows():
                 x1, y1 = int(row["x1"]), int(row["y1"])
                 x2, y2 = int(x1 + row["w"]), int(y1 + row["h"])
