@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  tensorrt:
+    image: tensorrt-app
+    ports:
+      - 8501:8501
+    network_mode: host
+    #runtime: nvidia
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    environment:
+      - DISPLAY=$DISPLAY
+    volumes:
+      - F:\\PycharmProjects\\panorama:/container_dir
+    #detach: true

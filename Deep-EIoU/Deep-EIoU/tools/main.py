@@ -9,10 +9,21 @@ import cv2
 from ultralytics import YOLO
 from detectionApp import detect
 import ffmpegcv
+import multiprocessing
+
 
 def main():
 
     st.set_page_config(page_title="AI Powered Web Application for Football Tactical Analysis", layout="wide", initial_sidebar_state="expanded")
+    # Добавление пользовательских стилей
+    st.markdown("""
+    <style>
+    body {
+        background-color: #333;
+        color: #ddd;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     st.title("Детекция футбольных игроков с разбиением на команды и проекцией на тактическую карту.")
     st.subheader(":red[Хорошо работает только с панорамным видео!]")
 
@@ -25,8 +36,8 @@ def main():
     input_vide_file = st.sidebar.file_uploader('Загрузите видео файл', type=['mp4','mov', 'avi', 'm4v', 'asf'])
 
     demo_vid_paths={
-        "Demo 1":'/home/skorp321/Projects/panorama/data/Swiss_vs_Slovakia-panoramic_video.mp4',
-        "Demo 2":'/home/skorp321/Projects/panorama/data/Swiss_vs_slovakia-Panorama.mp4'
+        "Demo 1":'/container_dir/data/Swiss_vs_Slovakia-panoramic_video.mp4',
+        "Demo 2":'/container_dir/data/Swiss_vs_slovakia-Panorama.mp4'
     }
     demo_vid_path = demo_vid_paths[demo_selected]
     demo_team_info = {
@@ -97,8 +108,8 @@ def main():
             player_model_conf_thresh = st.slider('PLayers Detection Confidence Threshold', min_value=0.0, max_value=1.0, value=0.6)
             keypoints_model_conf_thresh = st.slider('Field Keypoints PLayers Detection Confidence Threshold', min_value=0.0, max_value=1.0, value=0.7)
             keypoints_displacement_mean_tol = st.slider('Keypoints Displacement RMSE Tolerance (pixels)', min_value=-1, max_value=100, value=7,
-                                                         help="Indicates the maximum allowed average distance between the position of the field keypoints\
-                                                           in current and previous detections. It is used to determine wether to update homography matrix or not. ")
+                                                        help="Indicates the maximum allowed average distance between the position of the field keypoints\
+                                                        in current and previous detections. It is used to determine wether to update homography matrix or not. ")
             detection_hyper_params = {
                 0: player_model_conf_thresh,
                 1: keypoints_model_conf_thresh,
@@ -118,7 +129,7 @@ def main():
         bcol1, bcol2 = st.columns([1,1])
         with bcol1:
             nbr_frames_no_ball_thresh = st.number_input("Ball track reset threshold (frames)", min_value=1, max_value=10000,
-                                                     value=30, help="After how many frames with no ball detection, should the track be reset?")
+                                                        value=30, help="After how many frames with no ball detection, should the track be reset?")
             ball_track_dist_thresh = st.number_input("Ball track distance threshold (pixels)", min_value=1, max_value=1280,
                                                         value=100, help="Maximum allowed distance between two consecutive balls detection to keep the current track.")
             max_track_length = st.number_input("Maximum ball track length (Nbr. detections)", min_value=1, max_value=1000,
@@ -163,11 +174,12 @@ def main():
 
     if start_detection and not stop_detection:
         st.toast('Detection Started!')
-        parent_dir = "/home/skorp321/Projects/panorama/Deep-EIoU/Deep-EIoU"
+        parent_dir = "/container_dir/Deep-EIoU/Deep-EIoU"
 
         # Изменение текущего рабочего каталога
         os.chdir(parent_dir)
         status = detect(cap, stframe, output_file_name, save_output, plot_hyperparser)
+
     else:
         with contextlib.suppress(Exception):
             # Release the video capture object and close the display window
@@ -175,6 +187,7 @@ def main():
     if status:
         st.toast('Detection Completed!')
         cap.release()
+        status.terminate()
 
 
 import contextlib

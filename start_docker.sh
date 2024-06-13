@@ -1,2 +1,2 @@
 #start container vith cuda, torch and tansorrt
-docker run --net=host --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --env="DISPLAY=$DISPLAY" -v /home/skorp321/Projects/panorama:/container_dir tensorrt08
+docker run -p 8501:8501 --net=host --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -it --env="DISPLAY=$DISPLAY" -v F:\\PycharmProjects\\panorama:/container_dir -d tensorrt-app
