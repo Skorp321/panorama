@@ -6,7 +6,13 @@ import torch
 import torch_tensorrt
 
 from utils import TeamClassifier, HomographySetup, DatabaseWriter, Timer
-from utils import write_results, get_crops, image_track, apply_homography_to_point, make_parser
+from utils import (
+    write_results,
+    get_crops,
+    image_track,
+    apply_homography_to_point,
+    make_parser,
+)
 
 import cv2
 from tqdm.auto import tqdm
@@ -42,7 +48,7 @@ def main():
     model_reid = TeamClassifier(weights_path=args.path_to_reid, model_name="osnet_x1_0")
 
     if args.trt:
-        path_trt = args.path_to_reid.replace('.pt', '.engine')
+        path_trt = args.path_to_reid.replace(".pt", ".engine")
         trt_ts_module = torch.jit.load(path_trt)
 
         model_reid.extractor.model = trt_ts_module
@@ -89,29 +95,29 @@ def main():
                 imgs,
                 imgsz=1280,
                 half=True,
-                #show_conf=False,
-                #show_boxes=False,
+                # show_conf=False,
+                # show_boxes=False,
                 device=0,
                 stream=False,
-                agnostic_nms = True,
+                agnostic_nms=True,
                 stream_buffer=True,
-                max_det = 26
+                max_det=26,
             )
-            '''ball_output = ball_model(
+            """ball_output = ball_model(
                 imgs,
                 imgsz=1280,
                 show_conf=False,
                 show_boxes=False,
                 device=0,
                 stream=False,
-            )'''
-            
-            #bal_box = ball_output[0].boxes.data[0]
+            )"""
+
+            # bal_box = ball_output[0].boxes.data[0]
 
             # Process results list
-            for offset, result in zip(offsets, outputs):#, ball_output):
+            for offset, result in zip(offsets, outputs):  # , ball_output):
                 boxes = result.boxes  # Boxes object for bounding box outputs
-                '''ball_box = ball.boxes.data.detach().cpu().tolist()
+                """ball_box = ball.boxes.data.detach().cpu().tolist()
                 print(ball_box)      
                 if len(ball_box) > 0:
                     ball_box = ball_box[0]
@@ -119,12 +125,11 @@ def main():
                     bx2, by2 = int(offset + ball_box[2]), int(ball_box[3])
                     cv2.rectangle(
                         img_copy, (int(bx1), int(by1)), (int(bx2), int(by2)), (255,255,255), 1
-                    )'''
+                    )"""
                 for conf, box in zip(boxes.conf, boxes.data):
                     x1, y1 = int(offset + box[0]), int(box[1])
                     x2, y2 = int(offset + box[2]), int(box[3])
 
-                        
                     conf = conf.detach().cpu().tolist()
                     cls = int(box[5])
                     collor = collors[cls]
@@ -138,18 +143,18 @@ def main():
             frame_data = pd.DataFrame(dets, columns=columns)
 
             embed["cls"] = cls_list
-            
+
             if args.fp16:
-                imgs_list = resize_images(imgs_list, size=(256, 128))                
+                imgs_list = [cv2.resize(img, (256, 128)) for img in imgs_list]
                 imgs_list = np.array(imgs_list, dtype=np.float16)
                 imgs_list = torch.tensor(imgs_list, dtype=torch.half)
                 imgs_list = torch.permute(imgs_list, (0, 3, 2, 1))
                 print(imgs_list.shape)
-                #imgs_list = imgs_list.astype(np.float16)  # to FP16
-            #print(imgs_list)
+                # imgs_list = imgs_list.astype(np.float16)  # to FP16
+            # print(imgs_list)
             embeding = model_reid.extract_features(imgs_list)
 
-            embed["embs"] = embeding[:len(imgs_list)]
+            embed["embs"] = embeding[: len(imgs_list)]
             embeddings = pd.DataFrame(embed)
 
             embeddings["team"] = model_reid.classify(
@@ -197,12 +202,10 @@ def main():
 
             frame_data["xm"], frame_data["ym"] = h_point_x, h_point_y
             frame_data.sort_values(by=["x1", "y1"], inplace=True)
-            #print(f"Team 1: {team1}, team 2: {team2}")
+            # print(f"Team 1: {team1}, team 2: {team2}")
             detections = arr[:, 2:]
-            
-            results = image_track(
-                tracker, detections, embeddings["embs"], args, count
-            )
+
+            results = image_track(tracker, detections, embeddings["embs"], args, count)
             track_columns = [
                 "frame_id",
                 "id",
@@ -215,11 +218,11 @@ def main():
                 "none2",
                 "none3",
             ]
-            data = [tuple(res.split(',')) for res in results]
+            data = [tuple(res.split(",")) for res in results]
             results_df = pd.DataFrame(data, columns=track_columns)
             results_df = results_df.loc[:, ["id", "x1", "y1"]]
-            results_df['x1'] = results_df['x1'].astype(float)    
-            results_df['id'] = results_df['id'].astype(int)   
+            results_df["x1"] = results_df["x1"].astype(float)
+            results_df["id"] = results_df["id"].astype(int)
             results_df = results_df.sort_values(by=["x1"])
             frame_data = pd.concat([frame_data, results_df], axis=1)
 
@@ -275,7 +278,7 @@ def main():
                 thickness=2,
             )
             _, _, concatenated_img = homographer.prepare_images_for_display(img_copy)
-            
+
             if args.show:
                 cv2.imshow("Video", concatenated_img)
                 # Добавляем задержку для показа видео в реальном времени
@@ -283,7 +286,7 @@ def main():
                     break
             count += 1
             vid_writer.write(concatenated_img)
-        
+
     bd.close_db()
     cap.release()
     vid_writer.release()

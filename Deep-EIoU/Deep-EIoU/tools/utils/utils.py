@@ -165,13 +165,18 @@ def make_parser():
         help="path to soccer field image",
     )
     parser.add_argument(
+        "--path_to_layout_points",
+        default="/container_dir/data/Swiss_vs_Slovakia-panoramic_video_anno/annotations/person_keypoints_default.json",
+        help="path to soccer field image",
+    )
+    parser.add_argument(
         "--h_matrix_path",
         default="",  # /home/skorp321/Projects/panorama/data/h_matrix_path.npy",
         help="path to soccer field image",
     )
     parser.add_argument(
         "--path_to_det",
-        default="/container_dir/models/yolov8m_goalkeeper_1280.pt",
+        default="/container_dir/models/yolov8m_goalkeeper_1280.engine",
         help="path to detector model",
     )
     parser.add_argument(
@@ -189,13 +194,11 @@ def make_parser():
         default="/container_dir/models/osnet_ain_x1_0_triplet_custom.pt",
         help="path to reid model",
     )
-    parser.add_argument(
-        "--save_path", default="/container_dir/data/output", type=str
-    )
+    parser.add_argument("--save_path", default="/container_dir/data/output", type=str)
     parser.add_argument(
         "--trt",
         dest="trt",
-        default=False,
+        default=True,
         action="store_true",
         help="Using TensorRT model for testing.",
     )
@@ -226,7 +229,7 @@ def make_parser():
     parser.add_argument(
         "--fp16",
         dest="fp16",
-        default=False,
+        default=True,
         action="store_true",
         help="Adopting mix precision evaluating.",
     )

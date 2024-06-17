@@ -27,8 +27,6 @@ RUN git clone https://github.com/KaiyangZhou/deep-person-reid.git && \
 
 RUN pip install ultralytics
 
-#COPY . /container_dir/
-
-#WORKDIR /container_dir/Deep-EIoU/Deep-EIoU
-
-#CMD [ "straemlit", "run", "tools/main.py" ]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

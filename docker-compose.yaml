@@ -1,17 +1,20 @@
-version: "3.8"
+version: '3.8'
+
 services:
-  tensorrt:
+  container_dir:
     image: tensorrt-app
-    ports:
-      - 8501:8501
-    network_mode: host
-    #runtime: nvidia
-    ipc: host
-    ulimits:
-      memlock: -1
-      stack: 67108864
-    environment:
-      - DISPLAY=$DISPLAY
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
       - F:\\PycharmProjects\\panorama:/container_dir
-    #detach: true
+    ports:
+      - "8501:8501"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
