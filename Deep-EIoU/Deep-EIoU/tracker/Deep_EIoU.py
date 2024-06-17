@@ -51,7 +51,7 @@ class STrack(BaseTrack):
         self.mean, self.covariance = self.kalman_filter.predict(mean_state, self.covariance)
 
     @staticmethod
-    def multi_predict(stracks):
+    def multi_predict(stracks):  # sourcery skip: last-if-guard
         if len(stracks) > 0:
             multi_mean = np.asarray([st.mean.copy() for st in stracks])
             multi_covariance = np.asarray([st.covariance for st in stracks])
@@ -207,7 +207,7 @@ class STrack(BaseTrack):
         return ret
 
     def __repr__(self):
-        return 'OT_{}_({}-{})'.format(self.track_id, self.start_frame, self.end_frame)
+        return f'OT_{self.track_id}_({self.start_frame}-{self.end_frame})'
 
 
 class Deep_EIoU(object):
@@ -234,7 +234,7 @@ class Deep_EIoU(object):
         self.appearance_thresh = args.appearance_thresh
 
     def update(self, output_results, embedding):
-        
+
         '''
         output_results : [x1,y1,x2,y2,score] type:ndarray
         embdding : [emb1,emb2,...] dim:512
@@ -254,8 +254,8 @@ class Deep_EIoU(object):
                 scores = output_results[:, 4] * output_results[:, 5]
                 bboxes = output_results[:, :4]  # x1y1x2y2
             else:
-                raise ValueError('Wrong detection size {}'.format(output_results.shape[1]))
-                
+                raise ValueError(f'Wrong detection size {output_results.shape[1]}')
+
 
             # Remove bad detections
             lowest_inds = scores > self.track_low_thresh
@@ -266,7 +266,7 @@ class Deep_EIoU(object):
             remain_inds = scores > self.args.track_high_thresh
             dets = bboxes[remain_inds]
             scores_keep = scores[remain_inds]
-            
+
             if self.args.with_reid:
                 embedding = embedding[lowest_inds]
                 features_keep = embedding[remain_inds]
@@ -307,7 +307,7 @@ class Deep_EIoU(object):
         expand_scale_step = 0.1
 
         for iteration in range(num_iteration):
-            
+
             cur_expand_scale = init_expand_scale + expand_scale_step*iteration
 
             ious_dists = matching.eiou_distance(strack_pool, detections, cur_expand_scale)
@@ -327,12 +327,12 @@ class Deep_EIoU(object):
                 track = strack_pool[itracked]
                 det = detections[idet]
                 if track.state == TrackState.Tracked:
-                    track.update(detections[idet], self.frame_id)
+                    track.update(det, self.frame_id)
                     activated_starcks.append(track)
                 else:
                     track.re_activate(det, self.frame_id, new_id=False)
                     refind_stracks.append(track)
-            
+
             strack_pool = [strack_pool[i] for i in u_track if strack_pool[i].state == TrackState.Tracked]
             detections = [detections[i] for i in u_detection]
 
@@ -377,7 +377,7 @@ class Deep_EIoU(object):
 
         for it in u_track:
             track = r_tracked_stracks[it]
-            if not track.state == TrackState.Lost:
+            if track.state != TrackState.Lost:
                 track.mark_lost()
                 lost_stracks.append(track)
 
@@ -427,9 +427,7 @@ class Deep_EIoU(object):
         self.lost_stracks = sub_stracks(self.lost_stracks, self.removed_stracks)
         self.removed_stracks.extend(removed_stracks)
         self.tracked_stracks, self.lost_stracks = remove_duplicate_stracks(self.tracked_stracks, self.lost_stracks)
-        output_stracks = [track for track in self.tracked_stracks]
-
-        return output_stracks
+        return list(self.tracked_stracks)
 
 
 def joint_stracks(tlista, tlistb):
@@ -447,9 +445,7 @@ def joint_stracks(tlista, tlistb):
 
 
 def sub_stracks(tlista, tlistb):
-    stracks = {}
-    for t in tlista:
-        stracks[t.track_id] = t
+    stracks = {t.track_id: t for t in tlista}
     for t in tlistb:
         tid = t.track_id
         if stracks.get(tid, 0):
@@ -460,7 +456,7 @@ def sub_stracks(tlista, tlistb):
 def remove_duplicate_stracks(stracksa, stracksb):
     pdist = matching.iou_distance(stracksa, stracksb)
     pairs = np.where(pdist < 0.15)
-    dupa, dupb = list(), list()
+    dupa, dupb = [], []
     for p, q in zip(*pairs):
         timep = stracksa[p].frame_id - stracksa[p].start_frame
         timeq = stracksb[q].frame_id - stracksb[q].start_frame
@@ -468,6 +464,6 @@ def remove_duplicate_stracks(stracksa, stracksb):
             dupb.append(q)
         else:
             dupa.append(p)
-    resa = [t for i, t in enumerate(stracksa) if not i in dupa]
-    resb = [t for i, t in enumerate(stracksb) if not i in dupb]
+    resa = [t for i, t in enumerate(stracksa) if i not in dupa]
+    resb = [t for i, t in enumerate(stracksb) if i not in dupb]
     return resa, resb

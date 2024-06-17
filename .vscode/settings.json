@@ -1,7 +1,4 @@
 {
     "wolf.disableHotModeWarning": true,
-    "CodeGPT.apiKey": "CodeGPT Plus Beta",
-    "cSpell.words": [
-        "ипсользуемой"
-    ]
+    "CodeGPT.apiKey": "CodeGPT Plus Beta"
 }

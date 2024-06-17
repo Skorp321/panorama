@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  container_dir:
+    image: tensorrt-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - F:\\PycharmProjects\\panorama:/container_dir
+    ports:
+      - "8501:8501"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
