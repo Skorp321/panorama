@@ -54,7 +54,7 @@ class DatabaseWriter:
         # Extract data for each column, ensuring any NumPy arrays are converted to lists
         # current_timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         sql_cols = analytics_dict.loc[
-            :, ["frame", "xm", "ym", "team", "id", "cls", "conf"]
+            :, ["frame", "x_anchor", "y_anchor", "team", "id", "cls", "conf"]
         ]
         # Assume frame_number is calculated or obtained elsewhere
         # frame_number = analytics_dict['frame']  # Example to derive frame_number, adjust as necessary

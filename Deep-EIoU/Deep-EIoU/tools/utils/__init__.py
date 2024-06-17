@@ -9,6 +9,7 @@ from .utils import (
     make_parser,
     non_max_suppression,
     draw_annos,
+    drow_metrics,
 )
 from .databaseWriter import DatabaseWriter
 from .trackMacher import TrackMacher

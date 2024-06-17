@@ -414,3 +414,37 @@ def draw_annos(collor, img_copy, img_layout_copy, x1, y1, x2, y2, row, h_point):
         1,
         cv2.LINE_AA,
     )
+
+
+def drow_metrics(img, timer, count, cap, macht_df, text_scale):
+    cv2.putText(
+        img,
+        f"Frame {count} in {cap}",
+        (20, 40),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        text_scale,
+        (255, 2555, 255),
+        1,
+        cv2.LINE_AA,
+    )
+    cv2.putText(
+        img,
+        f"fps: {1.0 / timer.average_time: .2f}",
+        (20, 80),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        text_scale,
+        (255, 2555, 255),
+        1,
+        cv2.LINE_AA,
+    )
+    cv2.putText(
+        img,
+        f"Dets: {macht_df.shape[0]}",
+        (20, 120),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        text_scale,
+        (255, 2555, 255),
+        1,
+        cv2.LINE_AA,
+    )
+    return img

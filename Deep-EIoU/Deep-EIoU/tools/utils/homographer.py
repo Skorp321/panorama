@@ -2,8 +2,9 @@ import json
 import os
 import cv2
 import numpy as np
-import ffmpegcv
 from ultralytics import YOLO
+import ffmpegcv
+from loguru import logger
 
 
 class HomographySetup:
@@ -14,20 +15,29 @@ class HomographySetup:
         self.points_frame = []
 
     def load_and_prepare_images(self):
-        layout_img = cv2.imread(self.config.input_layout_image)
-        cap = cv2.VideoCapture(self.config.path)
-        ret, frame = cap.read()
-        cap.release()
+        layout_img = cv2.imread(self.config.path_to_field)
+        cap = ffmpegcv.VideoCapture(self.config.path_to_field)
+        # cap = cv2.VideoCapture(self.config.path)
 
-        if not ret:
-            print("Error: Could not read the video frame.")
+        if not cap.isOpened():
+            print(self.config.path)
+            print("Error: Could not open file.")
             return None, None
+
+        ret, frame = cap.read()
+        print(f"Ret: {ret}")
+        print(f"Frame: {frame}")
+        if not ret:
+            print("Error: Could not read the video frame.123")
+            return None, None
+
+        cap.release()
 
         return layout_img, frame
 
     def get_points_from_layout(self, soccer_field_path_anno: str) -> list:
         sorted_dict = self._extracted_from_compute_homography_matrix_3(
-            "/home/skorp321/Projects/panorama/data/soccer_field_anno/annotations/person_keypoints_default.json"
+            soccer_field_path_anno
         )
         print(sorted_dict)
         return list(sorted_dict.values())
@@ -42,7 +52,7 @@ class HomographySetup:
             field_points = outputs.keypoints.xy.detach().cpu().tolist()
             print(outputs.keypoints)"""
             sorted_dict = self._extracted_from_compute_homography_matrix_3(
-                "/home/skorp321/Projects/panorama/data/Swiss_vs_Slovakia-panoramic_video_anno/annotations/person_keypoints_default.json"
+                "/container_dir/panorama/data/Swiss_vs_Slovakia-panoramic_video_anno/annotations/person_keypoints_default.json"
             )
             field_points = list(sorted_dict.values())
             layout_points = self.get_points_from_layout(
@@ -51,9 +61,7 @@ class HomographySetup:
 
             H, _ = cv2.findHomography(np.array(field_points), np.array(layout_points))
             print(H)
-            self.config.h_matrix_path = (
-                "/home/skorp321/Projects/panorama/data/h_matrix_path.npy"
-            )
+            self.config.h_matrix_path = "/container_dir/panorama/data/h_matrix_path.npy"
             np.save(self.config.h_matrix_path, H)
 
         return np.load(self.config.h_matrix_path)
@@ -69,7 +77,8 @@ class HomographySetup:
         sorted_list = sorted(res.items(), key=lambda x: x[0])
         return dict(sorted_list)
 
-    def prepare_images_for_display(self, frame, layout):  # , layout):
+    def prepare_images_for_display(self, frame, layout):
+        logger.info(f"layout:{layout.shape}, frame: {frame.shape}")
         max_height = max(layout.shape[0], frame.shape[0])
         max_width = max(layout.shape[1], frame.shape[1])
 
@@ -93,8 +102,11 @@ class HomographySetup:
             cv2.BORDER_CONSTANT,
             value=[0, 0, 0],
         )
-
+        logger.info(
+            f"layout:{padded_layout_img.shape}, frame: {padded_first_frame.shape}"
+        )
         concatenated_img = np.concatenate(
             (padded_layout_img, padded_first_frame), axis=0
         )
+        logger.info(f"concatenated_img:{concatenated_img.shape}")
         return padded_layout_img, padded_first_frame, concatenated_img

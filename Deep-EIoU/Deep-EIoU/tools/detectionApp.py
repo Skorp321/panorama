@@ -29,9 +29,6 @@ from utils import (
 import cv2
 from tqdm.auto import tqdm
 import streamlit as st
-import socket
-import pickle
-import struct
 
 sys.path.append(".")
 import numpy as np
@@ -131,13 +128,13 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
 
     save_path = os.path.join(args.save_path, args.path.split("/")[-1])
 
-    # cap = ffmpegcv.VideoCaptureNV(args.path)
+    cap = ffmpegcv.VideoCaptureNV(args.path)
     # cap = cv2.VideoCapture(args.path)
     fps = cap.fps
     vid_writer = ffmpegcv.VideoWriterNV(save_path, "h264", fps)
     logger.info(f"save path to video: {save_path}")
 
-    text_scale = 4
+    text_scale = 1
     # size = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     st_prog_bar = st.progress(0, text="Detection starting.")
     size = cap.size
@@ -367,7 +364,6 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
                         y2,
                         row,
                         h_point,
-                        plot_hyperparser,
                     )
                 else:
                     draw_annos(
@@ -380,7 +376,6 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
                         y2,
                         row,
                         h_point,
-                        plot_hyperparser,
                     )
 
             # img_copy = cv2.cvtColor(img_copy, cv2.COLOR_RGB2BGR)
