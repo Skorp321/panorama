@@ -37,7 +37,6 @@ from loguru import logger
 from tracker.Deep_EIoU import Deep_EIoU
 from ultralytics import YOLO
 import ffmpegcv
-import torch_tensorrt
 
 from sklearn.cluster import KMeans
 import pandas as pd
@@ -108,6 +107,8 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
     model_reid = TeamClassifier(weights_path=args.path_to_reid, model_name="osnet_x1_0")
 
     if args.trt:
+        import torch_tensorrt
+
         path_trt = args.path_to_reid.replace(".pt", ".engine")
         trt_ts_module = torch.jit.load(path_trt)
 

@@ -21,7 +21,6 @@ class DatabaseWriter:
         Connects to the SQLite database, creating it if it doesn't exist.
         """
         self.conn = sqlite3.connect(self.db_path)
-        self.cursor = self.conn.cursor()
         # Check if the 'analytics' table exists
         self.cursor = self.conn.cursor()
 
