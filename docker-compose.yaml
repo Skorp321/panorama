@@ -1,11 +1,11 @@
 services:
   container_dir:
-    image: tensorrt-app
+    image: skorp321/football-streamlit
     build:
       context: .
       dockerfile: Dockerfile      
     volumes:
-      - F:\\PycharmProjects\\panorama:/container_dir
+      - /home/adminai/Documents/Projects/panorama123:/container_dir
     command: /bin/sh -c "cd Deep-EIoU/Deep-EIoU && streamlit run tools/main.py"    
     ports:
       - "8501:8501"

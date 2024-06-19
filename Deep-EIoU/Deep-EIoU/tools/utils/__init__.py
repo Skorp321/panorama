@@ -8,7 +8,8 @@ from .utils import (
     apply_homography_to_point,
     make_parser,
     non_max_suppression,
-    draw_annos,
+    draw_dets,
+    draw_id,
     drow_metrics,
 )
 from .databaseWriter import DatabaseWriter

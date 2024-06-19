@@ -86,10 +86,6 @@ def main():
 
     st.sidebar.text("Демо видео:")
     st.sidebar.video(demo_bytes)
-    # Load the YOLOv8 players detection model
-    model_players = YOLO("../../models/yolov8m_goalkeeper_1280.pt")
-    # Load the YOLOv8 field keypoints detection model
-    model_keypoints = YOLO("../../models/Yolo8M Field Keypoints/weights/best.pt")
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("Названия команд")
@@ -158,6 +154,15 @@ def main():
         with bcol1:
             st.write("")
         with bcol2:
+            # Инициализация сессионного состояния для кнопок
+            if "start_pressed" not in st.session_state:
+                st.session_state.start_pressed = False
+
+            if "stop_pressed" not in st.session_state:
+                st.session_state.stop_pressed = False
+
+            if 'download_ready' not in st.session_state:
+                st.session_state.download_ready = False
 
             bcol21, bcol22, bcol23, bcol24 = st.columns([1.5, 1, 1, 1])
             with bcol21:
@@ -172,7 +177,25 @@ def main():
                 stop_detection = st.button(
                     label="Остановить детекцию", disabled=stop_btn_state
                 )
-                flag_2 = True
+                if stop_detection:
+                    st.session_state.stop_pressed = True
+            with bcol21:
+                flag = not (
+                    st.session_state.start_pressed and st.session_state.stop_pressed
+                )
+
+                if not flag:
+                    data = get_data_from_db()
+
+                    # Конвертация в csv
+                    csv_buffer = io.StringIO()
+                    data.to_csv(csv_buffer, index=False)
+
+                    csv_bytes = csv_buffer.getvalue().encode("utf-8")
+
+                    st.download_button(label="Скачать файл", data=csv_bytes, file_name="data.csv", mime="text/csv")
+
+
             with bcol24:
                 st.write("")
         st.markdown("---")

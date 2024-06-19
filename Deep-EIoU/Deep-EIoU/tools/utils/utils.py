@@ -390,30 +390,32 @@ def non_max_suppression(boxes, iou_threshold):
     return np.array(picked_boxes)
 
 
-def draw_annos(collor, img_copy, img_layout_copy, x1, y1, x2, y2, row, h_point):
+def draw_dets(collor, img_copy, img_layout_copy, x1, y1, x2, y2, h_point):
     cv2.circle(img_layout_copy, h_point, 6, collor, -1)
-    cv2.putText(
-        img_layout_copy,
-        str(int(row["id"])),
-        h_point,
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
-        collor,
-        1,
-        cv2.LINE_AA,
-    )
-
     cv2.rectangle(img_copy, (x1, y1), (x2, y2), collor, 1)
-    cv2.putText(
-        img_copy,
-        str(int(row["id"])),
-        (x1, y1),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
-        collor,
-        1,
-        cv2.LINE_AA,
-    )
+
+
+def draw_id(collor, img_copy, img_layout_copy, x1, y1, row, h_point):
+        cv2.putText(
+            img_layout_copy,
+            str(int(row["id"])),
+            h_point,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            collor,
+            1,
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            img_copy,
+            str(int(row["id"])),
+            (x1, y1),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            collor,
+            1,
+            cv2.LINE_AA,
+        )      
 
 
 def drow_metrics(img, timer, count, cap, macht_df, text_scale):

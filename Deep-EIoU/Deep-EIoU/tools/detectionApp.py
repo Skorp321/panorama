@@ -22,7 +22,8 @@ from utils import (
     apply_homography_to_point,
     make_parser,
     non_max_suppression,
-    draw_annos,
+    draw_dets,
+    draw_id,
     drow_metrics,
 )
 
@@ -353,32 +354,58 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
                 ym = int(row["y_anchor"])
                 h_point = apply_homography_to_point([xm, ym], H)
 
-                if row["cls"] != 2:
-                    draw_annos(
-                        collors[int(row["team"])],
-                        img_copy,
-                        img_layout_copy,
-                        x1,
-                        y1,
-                        x2,
-                        y2,
-                        row,
-                        h_point,
-                    )
-                else:
-                    draw_annos(
-                        collors[3],
-                        img_copy,
-                        img_layout_copy,
-                        x1,
-                        y1,
-                        x2,
-                        y2,
-                        row,
-                        h_point,
-                    )
+                if plot_hyperparser[0]:
+                    pass
 
-            # img_copy = cv2.cvtColor(img_copy, cv2.COLOR_RGB2BGR)
+                if plot_hyperparser[3]:
+                    if row["cls"] != 2:
+                        draw_dets(
+                            collors[int(row["team"])],
+                            img_copy,
+                            img_layout_copy,
+                            x1,
+                            y1,
+                            x2,
+                            y2,
+                            h_point,
+                        )
+                    else:
+                        draw_dets(
+                            collors[3],
+                            img_copy,
+                            img_layout_copy,
+                            x1,
+                            y1,
+                            x2,
+                            y2,
+                            h_point,
+                        )
+
+                if plot_hyperparser[1]:
+                    if row["cls"] != 2:
+                        draw_id(
+                            collors[int(row["team"])],
+                            img_copy,
+                            img_layout_copy,
+                            x1,
+                            y1,
+                            row,
+                            h_point,
+                        )
+                    else:
+                        draw_id(
+                            collors[3],
+                            img_copy,
+                            img_layout_copy,
+                            x1,
+                            y1,
+                            row,
+                            h_point,
+                        )
+
+                if plot_hyperparser[2]:
+                    pass
+
             _, _, concatenated_img = homographer.prepare_images_for_display(
                 img_copy, img_layout_copy
             )
@@ -387,16 +414,7 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
                 concatenated_img, timer, count, cap.count, macht_df, text_scale
             )
 
-            # concatenated_img = cv2.resize(concatenated_img, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_LINEAR)
-
             if args.show:
-                # cv2.imshow('field', img_copy)
-                # cv2.imshow('layout', img_layout_copy)
-                # cv2.imshow('Video', concatenated_img)
-
-                # Добавляем задержку для показа видео в реальном времени
-                # if cv2.waitKey(25) & 0xFF == ord("q"):
-                #    break
                 stframe.image(concatenated_img, channels="BGR")
 
             if save_output:
@@ -406,11 +424,7 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
                     :, ["frame", "x_anchor", "y_anchor", "team", "id", "cls", "conf"]
                 ]
             )
-            print(
-                macht_df.loc[
-                    :, ["frame", "x_anchor", "y_anchor", "team", "id", "cls", "conf"]
-                ]
-            )
+
             prev_dets = deepcopy(macht_df)
             bd.update_db(macht_df)
 
