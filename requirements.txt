@@ -8,3 +8,8 @@ scikit-learn==1.4.2
 ultralytics==8.2.10
 streamlit
 streamlit_image_coordinates
+scipy
+Pillow
+gdown
+numpy==1.26.4
+scikit-learn      

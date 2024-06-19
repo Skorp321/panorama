@@ -1,9 +1,12 @@
 import base64
 import contextlib
+import io
 import os
+import sqlite3
 import tempfile
 import numpy as np
 
+import pandas as pd
 import streamlit as st
 from streamlit_image_coordinates import streamlit_image_coordinates
 import cv2
@@ -11,6 +14,15 @@ from ultralytics import YOLO
 from detectionApp import detect
 import ffmpegcv
 import multiprocessing
+
+
+# Функция для подключения к базе данных и извлечения данных
+def get_data_from_db():
+    conn = sqlite3.connect("/container_dir/data/soccer_analitics.db")
+    query = "SELECT * FROM analytics"
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    return df
 
 
 def main():
@@ -165,15 +177,14 @@ def main():
                 st.session_state.download_ready = False
 
             bcol21, bcol22, bcol23, bcol24 = st.columns([1.5, 1, 1, 1])
-            with bcol21:
-                ready_save = (not flag_1) | (not flag_2)
-                save_detection = st.button(label="Скачать файл", disabled=ready_save)
+
             with bcol22:
                 ready = team1_name == "" or team2_name == ""
                 start_detection = st.button(label="Начать детекцию", disabled=ready)
-                flag_1 = True
+                if start_detection:
+                    st.session_state.start_pressed = True
             with bcol23:
-                stop_btn_state = not start_detection
+                stop_btn_state = not st.session_state.start_pressed
                 stop_detection = st.button(
                     label="Остановить детекцию", disabled=stop_btn_state
                 )
@@ -203,6 +214,22 @@ def main():
     cap = ffmpegcv.VideoCaptureNV(tempf.name)
     status = False
 
+    if save_bt:
+        data = get_data_from_db()
+
+        # Конвертация данных в CSV
+        csv_buffer = io.StringIO()
+        data.to_csv(csv_buffer, index=False)
+        csv_buffer.seek(0)
+
+        # Преобразование строки в байты
+        csv_bytes = csv_buffer.getvalue().encode("utf-8")
+
+        # Кнопка загрузки файла
+        st.download_button(
+            label="Скачать файл", data=csv_bytes, file_name="data.csv", mime="text/csv"
+        )
+
     if start_detection and not stop_detection:
         st.toast("Detection Started!")
         parent_dir = "/container_dir/Deep-EIoU/Deep-EIoU"
@@ -219,7 +246,7 @@ def main():
             cap.release()
     if status:
         st.toast("Detection Completed!")
-        flag_2 = True
+        st.session_state.stop_pressed = True
         cap.release()
 
 
