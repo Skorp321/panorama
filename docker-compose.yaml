@@ -1,14 +1,24 @@
 services:
   container_dir:
-    image: skorp321/football-streamlit
+    image: tensorrt-app
+    shm_size: 15g
+    restart: always
+    privileged: true
     build:
       context: .
       dockerfile: Dockerfile      
     volumes:
-      - /home/adminai/Documents/Projects/panorama123:/container_dir
+      - /home/adminai/Documents/Projects/panorama:/container_dir
+      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so
+      - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi
+    devices:
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia0:/dev/nvidia0
     command: /bin/sh -c "cd Deep-EIoU/Deep-EIoU && streamlit run tools/main.py"    
     ports:
       - "8501:8501"
+      - "6006:6006"
     deploy:
       resources:
         reservations:

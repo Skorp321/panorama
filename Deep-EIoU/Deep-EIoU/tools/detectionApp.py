@@ -62,7 +62,7 @@ class DataArgs:
         "/container_dir/data/Swiss_vs_Slovakia-panoramic_video_anno/annotations/person_keypoints_default.json"
     )
     h_matrix_path: str = "/container_dir/data/h_matrix_path.npy"
-    path_to_det: str = "/container_dir/models/yolov8m_goalkeeper_1280.engine"
+    path_to_det: str = "/container_dir/models/yolov8m_goalkeeper_1280.pt"
     path_to_keypoints_det: str = "/container_dir/runs/pose/train8/weights/best.pt"
     ball_det: str = "/container_dir/models/ball_SN5+52games.pt"
     path_to_reid: str = "/container_dir/models/osnet_ain_x1_0_triplet_custom.pt"
@@ -130,7 +130,7 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
 
     save_path = os.path.join(args.save_path, args.path.split("/")[-1])
 
-    cap = ffmpegcv.VideoCaptureNV(args.path)
+    #cap = ffmpegcv.VideoCaptureNV(args.path)
     # cap = cv2.VideoCapture(args.path)
     fps = cap.fps
     vid_writer = ffmpegcv.VideoWriterNV(save_path, "h264", fps)
@@ -257,6 +257,22 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
                     conf = conf.detach().cpu().tolist()
                     cls = int(box[5])
                     dets.append([count, cls, x1, y1, x2, y2, conf])
+
+            dets = []
+
+            '''Ускоренно
+            for offset, result in zip(offsets, outputs):
+                boxes = result.boxes  # Boxes object for bounding box outputs
+
+                offset = int(offset)  # Convert offset once
+                boxes_data = boxes.data.detach().cpu().tolist()  # Detach and convert to list once
+                boxes_conf = boxes.conf.detach().cpu().tolist()  # Detach and convert to list once
+
+                dets.extend([
+                    [count, int(box[5]), offset + int(box[0]), int(box[1]), offset + int(box[2]), int(box[3]), conf]
+                    for box, conf in zip(boxes_data, boxes_conf)
+                ])'''
+
 
             dets = pd.DataFrame(
                 dets, columns=["frame", "cls", "x1", "y1", "x2", "y2", "conf"]

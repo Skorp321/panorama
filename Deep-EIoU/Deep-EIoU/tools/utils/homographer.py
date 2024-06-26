@@ -20,13 +20,10 @@ class HomographySetup:
         # cap = cv2.VideoCapture(self.config.path)
 
         if not cap.isOpened():
-            print(self.config.path)
             print("Error: Could not open file.")
             return None, None
 
         ret, frame = cap.read()
-        print(f"Ret: {ret}")
-        print(f"Frame: {frame}")
         if not ret:
             print("Error: Could not read the video frame.123")
             return None, None
@@ -39,7 +36,6 @@ class HomographySetup:
         sorted_dict = self._extracted_from_compute_homography_matrix_3(
             soccer_field_path_anno
         )
-        print(sorted_dict)
         return list(sorted_dict.values())
 
     def compute_homography_matrix(self):
@@ -47,14 +43,14 @@ class HomographySetup:
             print("Try to finde homography matrixe")
             print(np.load(self.config.h_matrix_path))
         else:
-            """model_keypoint = YOLO(self.config.path_to_keypoints_det)
+            model_keypoint = YOLO(self.config.path_to_keypoints_det)
             outputs = model_keypoint(self.first_frame, half=True, device=0, imgsz=1280)[0]
-            field_points = outputs.keypoints.xy.detach().cpu().tolist()
-            print(outputs.keypoints)"""
+            field_points = outputs.keypoints[0].xy.detach().cpu().tolist()
+            '''print(outputs.keypoints)
             sorted_dict = self._extracted_from_compute_homography_matrix_3(
                 "/container_dir/panorama/data/Swiss_vs_Slovakia-panoramic_video_anno/annotations/person_keypoints_default.json"
             )
-            field_points = list(sorted_dict.values())
+            field_points = list(sorted_dict.values())'''
             layout_points = self.get_points_from_layout(
                 self.config.path_to_field_points
             )

@@ -32,7 +32,6 @@ class teamMatcher:
                     self._update_counters(df, id, "team2", "team1", res_list)
             else:
                 res_list.append(df.loc[i, "current_team"])
-        print(df)
         return res_list
 
     def _update_counters(self, df, id, arg1, arg2, res_list):

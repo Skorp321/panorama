@@ -51,7 +51,9 @@ def main():
     )
     st.subheader(":red[Хорошо работает только с панорамным видео!]")
 
+    st.sidebar.image("/container_dir/data/Logo.svg", width=250)
     st.sidebar.title("Основные настройки")
+    
     demo_selected = st.sidebar.radio(
         label="Выбирите демо видео:", options=["Demo 1", "Demo 2"], horizontal=True
     )
@@ -91,13 +93,18 @@ def main():
     tempf = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
     if not input_vide_file:
         tempf.name = demo_vid_path
+        demo_vid = open(tempf.name, 'rb')
+        demo_bytes = demo_vid.read()
+
+        st.sidebar.text('Demo video')
+        st.sidebar.video(demo_bytes)
     else:
         tempf.write(input_vide_file.read())
-    demo_vid = open(tempf.name, "rb")
-    demo_bytes = demo_vid.read()
+        demo_vid = open(tempf.name, 'rb')
+        demo_bytes = demo_vid.read()
 
-    st.sidebar.text("Демо видео:")
-    st.sidebar.video(demo_bytes)
+        st.sidebar.text('Input video')
+        st.sidebar.video(demo_bytes)
 
     st.sidebar.markdown("---")
     st.sidebar.subheader("Названия команд")
@@ -211,24 +218,8 @@ def main():
                 st.write("")
         st.markdown("---")
     stframe = st.empty()
-    cap = ffmpegcv.VideoCaptureNV(tempf.name)
+    cap = ffmpegcv.VideoCapture(tempf.name)
     status = False
-
-    if save_bt:
-        data = get_data_from_db()
-
-        # Конвертация данных в CSV
-        csv_buffer = io.StringIO()
-        data.to_csv(csv_buffer, index=False)
-        csv_buffer.seek(0)
-
-        # Преобразование строки в байты
-        csv_bytes = csv_buffer.getvalue().encode("utf-8")
-
-        # Кнопка загрузки файла
-        st.download_button(
-            label="Скачать файл", data=csv_bytes, file_name="data.csv", mime="text/csv"
-        )
 
     if start_detection and not stop_detection:
         st.toast("Detection Started!")
@@ -246,8 +237,17 @@ def main():
             cap.release()
     if status:
         st.toast("Detection Completed!")
-        st.session_state.stop_pressed = True
         cap.release()
+
+        data = get_data_from_db()
+
+        # Конвертация в csv
+        csv_buffer = io.StringIO()
+        data.to_csv(csv_buffer, index=False)
+
+        csv_bytes = csv_buffer.getvalue().encode("utf-8")
+
+        st.download_button(label="Скачать файл", data=csv_bytes, file_name="data.csv", mime="text/csv")
 
 
 import contextlib

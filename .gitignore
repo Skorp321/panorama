@@ -19,3 +19,5 @@ homography_kornia
 Deep-EIoU/Deep-EIoU/datasets/*
 Deep-EIoU/Deep-EIoU.tools/__pycache__/*
 !src/
+*.pyc
+__pycache__/

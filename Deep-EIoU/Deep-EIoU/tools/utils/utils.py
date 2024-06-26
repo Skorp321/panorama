@@ -426,7 +426,7 @@ def drow_metrics(img, timer, count, cap, macht_df, text_scale):
         cv2.FONT_HERSHEY_SIMPLEX,
         text_scale,
         (255, 2555, 255),
-        1,
+        2,
         cv2.LINE_AA,
     )
     cv2.putText(
@@ -436,7 +436,7 @@ def drow_metrics(img, timer, count, cap, macht_df, text_scale):
         cv2.FONT_HERSHEY_SIMPLEX,
         text_scale,
         (255, 2555, 255),
-        1,
+        2,
         cv2.LINE_AA,
     )
     cv2.putText(
@@ -446,7 +446,7 @@ def drow_metrics(img, timer, count, cap, macht_df, text_scale):
         cv2.FONT_HERSHEY_SIMPLEX,
         text_scale,
         (255, 2555, 255),
-        1,
+        2,
         cv2.LINE_AA,
     )
     return img
