@@ -130,30 +130,22 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
 
     save_path = os.path.join(args.save_path, args.path.split("/")[-1])
 
-    #cap = ffmpegcv.VideoCaptureNV(args.path)
-    # cap = cv2.VideoCapture(args.path)
     fps = cap.fps
     vid_writer = ffmpegcv.VideoWriterNV(save_path, "h264", fps)
     logger.info(f"save path to video: {save_path}")
 
     text_scale = 1
-    # size = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     st_prog_bar = st.progress(0, text="Detection starting.")
     size = cap.size
     count = 1
 
     prev_dets = pd.DataFrame()
 
-    """while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break"""
-
     for frame in tqdm(cap):
 
         timer.tic()
         percent_complete = int(count / (cap.count) * 100)
-        img_copy = frame.copy()  # [int(size[1]*0.4):, :].copy()
+        img_copy = frame.copy() 
         img_layout_copy = homographer.layout_img.copy()
 
         if args.fp16:
@@ -258,34 +250,19 @@ def detect(cap, stframe, output_file_name, save_output, plot_hyperparser, df_fie
                     cls = int(box[5])
                     dets.append([count, cls, x1, y1, x2, y2, conf])
 
-            dets = []
+            columns = ["frame", "cls", "x1", "y1", "x2", "y2", "conf"]
 
-            '''Ускоренно
-            for offset, result in zip(offsets, outputs):
-                boxes = result.boxes  # Boxes object for bounding box outputs
+            dets = pd.DataFrame(dets, columns=columns)
 
-                offset = int(offset)  # Convert offset once
-                boxes_data = boxes.data.detach().cpu().tolist()  # Detach and convert to list once
-                boxes_conf = boxes.conf.detach().cpu().tolist()  # Detach and convert to list once
-
-                dets.extend([
-                    [count, int(box[5]), offset + int(box[0]), int(box[1]), offset + int(box[2]), int(box[3]), conf]
-                    for box, conf in zip(boxes_data, boxes_conf)
-                ])'''
-
-
-            dets = pd.DataFrame(
-                dets, columns=["frame", "cls", "x1", "y1", "x2", "y2", "conf"]
-            )
             dets_nms = non_max_suppression(
-                dets[["cls", "x1", "y1", "x2", "y2", "conf"]], 0.4
+                dets[["cls", "x1", "y1", "x2", "y2", "conf"]], 0.5
             )
             dets_nms = dets_nms[:23]
-            imgs_list = [
-                img_copy[int(y1) : int(y2), int(x1) : int(x2)]
-                for (x1, y1, x2, y2, _, _) in dets_nms
-            ]
-            cls_list = [int(cls) for (_, _, _, _, _, cls) in dets_nms]
+            imgs_list = [img_copy[int(y1):int(y2), int(x1):int(x2)] for (x1, y1, x2, y2, _, _) in dets_nms]
+            cls_list = [int(cls) for(_, _, _, _, _, cls) in dets_nms]
+
+            embed["cls"] = cls_list
+            embed["embs"] = model_reid.extract_features(imgs_list)
             embed["cls"] = cls_list
 
             embed["embs"] = model_reid.extract_features(imgs_list)

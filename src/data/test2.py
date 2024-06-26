@@ -2,7 +2,7 @@ from ultralytics import YOLO
 import cv2
 
 model = YOLO("models/yolov8m_keypoints.pt")
-img = cv2.imread("data/frame_001.jpg")
+img = cv2.imread("data/Panoramic_video_football.mp4")
 res = model.predict(img, imgsz=1280)
 
 points = res[0].keypoints.xy[0].cpu().numpy()
