@@ -21,3 +21,4 @@ Deep-EIoU/Deep-EIoU.tools/__pycache__/*
 !src/
 *.pyc
 __pycache__/
+Streamlit_web_app/
