@@ -50,7 +50,7 @@ def main():
     st.title(
         "Детекция футбольных игроков с разбиением на команды и проекцией на тактическую карту."
     )
-    st.subheader(":red[Хорошо работает только с панорамным видео!]")
+    #st.subheader(":red[Хорошо работает только с панорамным видео!]")
 
     url = 'https://tl-razrabotka.ru/'
     # Путь к картинке
@@ -79,7 +79,7 @@ def main():
 
     ## Sidebar Setup
     st.sidebar.markdown("---")
-    st.sidebar.subheader("Загрузка видео")
+    st.sidebar.subheader(":red[Хорошо работает только с панорамным видео!]")
     input_vide_file = st.sidebar.file_uploader(
         "Загрузите видео файл", type=["mp4", "mov", "avi", "m4v", "asf"]
     )
@@ -106,7 +106,7 @@ def main():
         demo_vid = open(tempf.name, 'rb')
         demo_bytes = demo_vid.read()
 
-        st.sidebar.text('Input video')
+        st.sidebar.text('Предпросмотр видео:')
         st.sidebar.video(demo_bytes)
 
     st.sidebar.markdown("---")
@@ -129,7 +129,7 @@ def main():
                     **Есть два демонстрационных видеоролика, которые автоматически загружаются при запуске приложения, а также рекомендуемые настройки и гиперпараметры**
                     1. Загрузите видео для анализа, воспользовавшись кнопкой "Обзор файлов" в боковом меню.                    
                     2. Перейдите на вкладку "Настройки детекции", выберите параметры аннотации.
-                    3. Запустите детекцию!
+                    3. Запустите анализ!
                     4. По завершению анализа или при нажатии кнопки "Остановить анализ" появится кнопка для скачивания результатов анализа.
                     """
         )
@@ -142,13 +142,13 @@ def main():
             df_field = st.empty()
 
         with t2col:
-            st.subheader("Аннотация таблицы:")
-            st.write("frame - номер кадра.")
-            st.write("x_anchor, y_anchor - координаты x и y игрока на поле.")
-            st.write("team - принадлежность игрока к команде 1 или 2.")
-            st.write("id - номер трека игрока.")
-            st.write("cls - класс детекции(1 - игрок, 2 - судья)")
-            st.write("conf - уверенность модели в детекции(max = 1)")
+            st.subheader("Аннотации к таблицы:")
+            st.write("**frame** - номер кадра.")
+            st.write("**x_anchor**, **y_anchor** - координаты x и y игрока на поле.")
+            st.write("**team** - принадлежность игрока к команде 1 или 2.")
+            st.write("**id** - номер трека игрока.")
+            st.write("**cls** - класс детекции(1 - игрок, 2 - судья)")
+            st.write("**conf** - уверенность модели в детекции(max = 1)")
             
         with t2col2:
             st.write("Опции визуализации:")
@@ -190,7 +190,7 @@ def main():
             with bcol23:
                 stop_btn_state = not st.session_state.start_pressed
                 stop_detection = st.button(
-                    label="Остановить анализ", disabled=stop_btn_state
+                    label="Остановить", disabled=stop_btn_state
                 )
                 if stop_detection:
                     st.session_state.stop_pressed = True
@@ -219,7 +219,7 @@ def main():
     status = False
 
     if start_detection and not stop_detection:
-        st.toast("Detection Started!")
+        st.toast("Анализ начат!")
         parent_dir = "/container_dir/Deep-EIoU/Deep-EIoU"
 
         # Изменение текущего рабочего каталога
@@ -233,7 +233,7 @@ def main():
             # Release the video capture object and close the display window
             cap.release()
     if status:
-        st.toast("Detection Completed!")
+        st.toast("Анализ завершен!")
         cap.release()
 
         data = get_data_from_db()

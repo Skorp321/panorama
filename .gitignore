@@ -2,6 +2,7 @@
 .vscode
 .sport_env
 .vscode
+.lprof
 /data
 /models/*
 .vscode
