@@ -63,7 +63,7 @@ class DataArgs:
     )
     h_matrix_path: str = "/container_dir/data/h_matrix_path.npy"
     path_to_det: str = "/container_dir/models/yolov8m_goalkeeper_1280.pt"
-    path_to_keypoints_det: str = "/container_dir/runs/pose/train8/weights/best.pt"
+    path_to_keypoints_det: str = "/container_dir/runs/pose/train7/weights/best.pt"
     #ball_det: str = "/container_dir/models/ball_SN5+52games.pt"
     path_to_reid: str = "/container_dir/models/osnet_ain_x1_0_triplet_custom.pt"
     save_path: str = "/container_dir/data/output"

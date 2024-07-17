@@ -8,7 +8,7 @@ services:
       context: .
       dockerfile: Dockerfile      
     volumes:
-      - /home/adminai/Documents/Projects/panorama:/container_dir
+      - ./:/container_dir
       - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so
       - /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1:/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1
       - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi

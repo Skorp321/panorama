@@ -98,6 +98,7 @@ def process_video(args, jj, full_path) -> None:
     anno_folder = os.path.join(anno_start, os.path.split(full_path)[-1])
     video_name = anno_folder.split(".")[0]
     anno_path = os.path.join(video_name, "annotations", "person_keypoints_default.json")
+    print(anno_path)
     anno_data, keypoints_names = create_keypoint_detaset(anno_path)
 
     with tqdm(total=cap.count) as pbar:
